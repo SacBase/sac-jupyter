@@ -5,6 +5,8 @@ from ipykernel.kernelbase import Kernel
 import re
 import subprocess
 import tempfile
+import shutil
+from ctypes.util import find_library
 import os
 import os.path as path
 import json
@@ -84,7 +86,7 @@ class RealTimeSubprocess(subprocess.Popen):
 
 class SacKernel(Kernel):
     implementation = 'jupyter_sac_kernel'
-    implementation_version = '0.2'
+    implementation_version = '0.3'
     language = 'sac'
     language_version = '1.3.3'
     language_info = {'name': 'sac',
@@ -101,19 +103,30 @@ class SacKernel(Kernel):
             #"use Array: all;"
         ]
         self.funs = dict()
-        self.sac2c_flags =  ['-v0', '-O0', '-noprelude', '-noinl', '-specmode', 'aud']
+                # Make sure to do checks on array bounds as well
+        self.sac2c_flags =  ['-v0', '-O0', '-noprelude', '-noinl', '-specmode', 'akd', '-check', 'tc']
 
-        # XXX this is the location of the sac2c which must
-        #     be correct for the system you are running the kernel.
-        #     otherwise this module won't be able to find libsac2c.
-        p = '/Volumes/Users/sbs/sac2c'
-        self.sac2c_bin = p + '/build_p/sac2c_p'
-        self.sac2c_so = p + '/build_p/lib/libsac2c_p.dylib'
+        # get sac2c_p binary
+        os.environ["PATH"] += "/usr/local/bin"
+        self.sac2c_bin = shutil.which ('sac2c_p')
+
+        # find global lib directory (different depending on sac2c version)
+        sac_path_proc = subprocess.run ([self.sac2c_bin, "-C", "TREE_OUTPUTDIR"], capture_output=True, text=True)
+        if "LD_LIBRARY_PATH" in os.environ:
+            os.environ["LD_LIBRARY_PATH"] += sac_path_proc.stdout.split(":")[0].strip()
+        else:
+            os.environ["LD_LIBRARY_PATH"] = sac_path_proc.stdout.split(":")[0].strip()
+        sac2c_so_name = find_library ('sac2c_p')
+        if not sac2c_so_name:
+            raise RuntimeError ("Unable to load sac2c_p shared library!")
+        self.sac2c_so = path.join (sac_path_proc.stdout.split(":")[0].strip(), sac2c_so_name)
+
+        # get shared object
         self.sac2c_so_handle = ctypes.CDLL (self.sac2c_so, mode=(1|ctypes.RTLD_GLOBAL))
+
+        # init sac2c jupyter interface
         self.sac2c_so_handle.jupyter_init ()
-
         self.sac2c_so_handle.jupyter_parse_from_string.restype = ctypes.c_void_p
-
         self.sac2c_so_handle.jupyter_free.argtypes = ctypes.c_void_p,
         self.sac2c_so_handle.jupyter_free.res_rtype = ctypes.c_void_p
 
