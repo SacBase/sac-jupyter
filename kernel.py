@@ -109,17 +109,20 @@ class SacKernel(Kernel):
         # get sac2c_p binary
         os.environ["PATH"] += "/usr/local/bin"
         self.sac2c_bin = shutil.which ('sac2c_p')
+        if not self.sac2c_bin:
+            raise RuntimeError ("Unable to find sac2c_p binary!")
 
         # find global lib directory (different depending on sac2c version)
         sac_path_proc = subprocess.run ([self.sac2c_bin, "-C", "TREE_OUTPUTDIR"], capture_output=True, text=True)
+        sac_lib_path = sac_path_proc.stdout.split(":")[0].strip()
         if "LD_LIBRARY_PATH" in os.environ:
-            os.environ["LD_LIBRARY_PATH"] += sac_path_proc.stdout.split(":")[0].strip()
+            os.environ["LD_LIBRARY_PATH"] += sac_lib_path
         else:
-            os.environ["LD_LIBRARY_PATH"] = sac_path_proc.stdout.split(":")[0].strip()
+            os.environ["LD_LIBRARY_PATH"] = sac_lib_path
         sac2c_so_name = find_library ('sac2c_p')
         if not sac2c_so_name:
             raise RuntimeError ("Unable to load sac2c_p shared library!")
-        self.sac2c_so = path.join (sac_path_proc.stdout.split(":")[0].strip(), sac2c_so_name)
+        self.sac2c_so = path.join (sac_lib_path, sac2c_so_name)
 
         # get shared object
         self.sac2c_so_handle = ctypes.CDLL (self.sac2c_so, mode=(1|ctypes.RTLD_GLOBAL))
