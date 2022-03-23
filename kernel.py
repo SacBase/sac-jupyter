@@ -104,7 +104,7 @@ class SacKernel(Kernel):
         ]
         self.funs = dict()
                 # Make sure to do checks on array bounds as well
-        self.sac2c_flags =  ['-v0', '-O0', '-noprelude', '-noinl', '-specmode', 'akd', '-check', 'tc']
+        self.sac2c_flags =  ['-v0', '-O0', '-noprelude', '-noinl', '-specmode', 'aud', '-check', 'c']
 
         # get sac2c_p binary
         os.environ["PATH"] += "/usr/local/bin"
@@ -220,7 +220,7 @@ Currently the following commands are available:
         imports = "\n".join (self.imports)
 
         if r == 1: # expr
-            stmts += "StdIO::print ({}\n\n);".format (txt)
+            stmts += "\nStdIO::print ({}\n\n);\n".format (txt)
 
         elif r == 2: # stmt
             stmts += txt
