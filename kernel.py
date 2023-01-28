@@ -98,10 +98,10 @@ class SacKernel(Kernel):
         super(SacKernel, self).__init__(*args, **kwargs)
         self.files = []
         self.stmts = []
-        self.imports = [
-            #"use StdIO: all;",
-            #"use Array: all;"
-        ]
+        self.uses = dict()
+        self.uses["Array"] = "use Array: all;"
+        self.imports = dict()
+        self.typedefs = dict()
         self.funs = dict()
                 # Make sure to do checks on array bounds as well
         self.sac2c_flags =  ['-v0', '-O0', '-noprelude', '-noinl', '-specmode', 'aud', '-check', 'c']
@@ -129,6 +129,7 @@ class SacKernel(Kernel):
 
         # init sac2c jupyter interface
         self.sac2c_so_handle.jupyter_init ()
+        self.sac2c_so_handle.CTFinitialize ()
         self.sac2c_so_handle.jupyter_parse_from_string.restype = ctypes.c_void_p
         self.sac2c_so_handle.jupyter_free.argtypes = ctypes.c_void_p,
         self.sac2c_so_handle.jupyter_free.res_rtype = ctypes.c_void_p
@@ -195,7 +196,7 @@ class SacKernel(Kernel):
             return 0
         l = lines[0].strip ()
         if l == '%print':
-            return self.mk_sacprg ("/* Placeholder.  */ 0", 1)
+            return self.mk_sacprg ("/* your expression  */", 1)
         elif l == '%flags':
             return ' '.join (self.sac2c_flags)
         elif l.startswith ('%setflags'):
@@ -216,14 +217,18 @@ Currently the following commands are available:
 
     def mk_sacprg (self, txt, r):
 
-        stmts = "\n\t".join (self.stmts)
+        stmts = "\n".join (self.stmts)
 
         funs = "\n\n".join (self.funs.values ())
 
-        imports = "\n".join (self.imports)
+        uses = "\n".join (self.uses.values ())
+
+        imports = "\n".join (self.imports.values ())
+
+        typedefs = "\n".join (self.typedefs.values ())
 
         if r == 1: # expr
-            stmts += "\nStdIO::print ({}\n\n);\n".format (txt)
+            stmts += "\n    StdIO::print ({});\n".format (txt)
 
         elif r == 2: # stmt
             stmts += txt
@@ -231,24 +236,36 @@ Currently the following commands are available:
         elif r == 3: # fundef
             funs += txt
 
-        else: # use/import/typedef
+        elif r == 4: # typedef
+            typedefs += txt
+
+        elif r == 5: # import
             imports += txt
+
+        else: # use
+            uses += txt
 
 
         prg = """\
-// use/import/typedef
+// use
+{}
+
+// import
+{}
+
+// typedef
 {}
 
 // functions
 {}
 
-// main function with stmt.
 int main () {{
-    {}
+    // statements
+{}
     return 0;
 }}
 """
-        p = prg.format (imports, funs, stmts)
+        p = prg.format (uses, imports, typedefs, funs, stmts)
         return p
 
     def do_execute(self, code, silent, store_history=True,
@@ -300,11 +317,15 @@ int main () {{
                                 'user_expressions': {}}
             else:
                 if r["ret"] == 2: # stmts
-                    self.stmts.append (code)
+                    self.stmts.append ("    "+code.replace ("\n", "\n    ")+"\n")
                 elif r["ret"] == 3: # funs
                     self.funs[r["symbol"]] = code
-                elif r["ret"] == 4: # use/import/typedef
-                    self.imports.append (code)
+                elif r["ret"] == 4: # typedef
+                    self.typedefs[r["symbol"]] = code
+                elif r["ret"] == 5: # import
+                    self.imports[r["symbol"]] = code
+                elif r["ret"] == 6: # use
+                    self.uses[r["symbol"]] = code
 
         return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
 
