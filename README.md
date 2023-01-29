@@ -11,7 +11,7 @@ Installing the kernel requires the following steps:
    jupyter is looking for kernels. On linux systems local jupyter
    configurations are located in `$HOME/.local/share/jupyter`.
    On OSX this is at `$HOME/Library/Jupyter` and on windows it is
-   `%APPDATA%\jupyter`. Referring to the path as <jupyter-path>,
+   `%APPDATA%\jupyter`. Referring to this path as <jupyter-path>,
     you should do:
 ```bash
 mkdir -p <jupyter-path>/kernels
@@ -21,16 +21,18 @@ cp -r sac_tutorial <jupyter-path>/kernels
 3. Adjust the path in `<jupyter-path>/kernels/sac/kernel.json` and in
    `<jupyter-path>/kernels/sac_tutorial/kernel.json` to
    point to the location of the `kernel.py` file in this repository.
-4. In `kernel.py` adjust the path to `sac2c` line 105.
-5. Install `nbextensions` for jupyter.
-6. Now install the tutorial:
+
+Enabling the sac2c on jupyter tutorial requires a few more steps:
+
+1. Install `nbextensions` for jupyter.
+2. Now install the sac2c-jupyter mini tutorial:
 ```bash
 mkdir -p <jupyter-path>/nbextensions/
 cp -r nbextensions/* <jupyter-path>/nbextensions
 ```
-7. Enable the tutorial:
+3. Enable the tutorial extensions:
 ```bash
-jupyter nbextension enable sac_tutorial/main
+jupyter nbextension enable sac_tutorial
 ```
 
 At some point we hope to add these files to the sac2c packages so the
