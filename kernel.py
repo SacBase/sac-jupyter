@@ -108,20 +108,26 @@ class SacKernel(Kernel):
 
         # get sac2c_p binary
         os.environ["PATH"] += "/usr/local/bin"
-        self.sac2c_bin = shutil.which ('sac2c_p')
+        self.sac2c_bin = shutil.which ('sac2c')
         if not self.sac2c_bin:
-            raise RuntimeError ("Unable to find sac2c_p binary!")
+            raise RuntimeError ("Unable to find sac2c binary!")
 
         # find global lib directory (different depending on sac2c version)
-        sac_path_proc = subprocess.run ([self.sac2c_bin, "-C", "TREE_OUTPUTDIR"], capture_output=True, text=True)
-        sac_lib_path = sac_path_proc.stdout.split(":")[0].strip()
+        sac_path_proc = subprocess.run ([self.sac2c_bin, "-plibsac2c"], capture_output=True, text=True)
+        sac_lib_path = sac_path_proc.stdout.strip(" \n")
         if "LD_LIBRARY_PATH" in os.environ:
             os.environ["LD_LIBRARY_PATH"] += sac_lib_path
         else:
             os.environ["LD_LIBRARY_PATH"] = sac_lib_path
+        if "DYLD_LIBRARY_PATH" in os.environ:
+            os.environ["DYLD_LIBRARY_PATH"] += sac_lib_path
+        else:
+            os.environ["DYLD_LIBRARY_PATH"] = sac_lib_path
         sac2c_so_name = find_library ('sac2c_p')
         if not sac2c_so_name:
-            raise RuntimeError ("Unable to load sac2c_p shared library!")
+            sac2c_so_name = find_library ('sac2c_p')
+            if not sac2c_so_name:
+                raise RuntimeError ("Unable to load sac2c shared library!")
         self.sac2c_so = path.join (sac_lib_path, sac2c_so_name)
 
         # get shared object
