@@ -104,7 +104,7 @@ class SacKernel(Kernel):
         self.typedefs = dict()
         self.funs = dict()
                 # Make sure to do checks on array bounds as well
-        self.sac2c_flags =  ['-v0', '-O0', '-noprelude', '-noinl', '-specmode', 'aud', '-check', 'c']
+        self.sac2c_flags =  ['-v0', '-O0', '-noprelude', '-noinl', '-specmode', 'akd', '-check', 'tc']
 
         # get sac2c_p binary
         os.environ["PATH"] += "/usr/local/bin"
