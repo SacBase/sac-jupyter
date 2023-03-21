@@ -10,23 +10,43 @@ import {
 
 import { 
   ICommandPalette, 
-  MainAreaWidget, 
+  // MainAreaWidget, 
   ToolbarButton 
 } from '@jupyterlab/apputils';
 
-import { Widget, Menu, MenuBar } from '@lumino/widgets';
+//import { Widget } from '@lumino/widgets';
 
 /**
  * Initialization data for the sac_program_viewer extension.
  */
-const plugin: JupyterFrontEndPlugin<void> = {
+const extension: JupyterFrontEndPlugin<void> = {
   id: 'sac_program_viewer',
   autoStart: true,
-  requires: [ICommandPalette],
+  requires: [ICommandPalette, INotebookTracker],
   activate: (app: JupyterFrontEnd, palette: ICommandPalette, notebooks: INotebookTracker) => {
-
     console.log('JupyterLab extension sac_program_viewer is active!');
 
+    // Create a toolbar button for notebooks
+    let button = new ToolbarButton({
+      label: 'Sac Program Viewer Button',
+      iconClass: 'my-extension-icon',
+      onClick: () => {
+        // Get the currently active notebook panel
+        let current = notebooks.currentWidget as NotebookPanel;
+        if (!current) {
+          return;
+        }
+
+        // Add some text to the current cell
+        current.content.activeCell.model.value.text = 'Hello, JupyterLab!';
+      }
+    });
+
+    // Add the toolbar button to the notebook toolbar
+    let toolbar = app.shell.currentWidget.toolbar;
+    toolbar.addItem('sac-program-viewer', button);
+
+/*
     // Define a widget creator function,
     // then call it to make a new widget
     const newWidget = () => {
@@ -60,7 +80,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
     // Add the command to the palette.
     palette.addItem({ command, category: 'Tutorial' });
+*/
   }
 };
 
-export default plugin;
+export default extension;
