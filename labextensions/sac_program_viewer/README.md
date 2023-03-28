@@ -1,7 +1,7 @@
 # sac_program_viewer
 
 [![Github Actions Status](https://github.com/SacBase/sac-jupyter/workflows/Build/badge.svg)](https://github.com/SacBase/sac-jupyter/actions/workflows/build.yml)
-A jupyterlab extension for SAC that shows the program in a seperate panel
+A jupyterlab extension for SAC that shows the program in a seperate panel. All installations below are for the jupyter notebook (nbextensions) and not for the jupyterlab (labextensions).
 
 ## Requirements
 
