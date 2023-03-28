@@ -7,7 +7,7 @@ import { /*NotebookActions,*/ NotebookPanel, INotebookModel, } from '@jupyterlab
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 
 import { 
-  // ICommandPalette, 
+  ICommandPalette,
   // MainAreaWidget, 
   ToolbarButton, 
   // UseSignal 
@@ -19,15 +19,16 @@ import {
 /**
  * The plugin registration information.
  */
-const plugin: JupyterFrontEndPlugin<void> = {
+const extension: JupyterFrontEndPlugin<void> = {
   activate,
-  id: 'toolbar-button',
+  id: 'sac-program-viewer',
   autoStart: true,
+  requires: [ICommandPalette]
 };
 
 
 /**
- * A notebook widget extension that adds a button to the toolbar.
+ * Add button to the toolbar.
  */
 export class ButtonExtension
   implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel>
@@ -43,32 +44,59 @@ export class ButtonExtension
     panel: NotebookPanel,
     context: DocumentRegistry.IContext<INotebookModel>
   ): IDisposable {
-    const clearOutput = () => {
+    const openPanel = () => {
       //NotebookActions.clearAllOutputs(panel.content);
       console.log('You clicked a button')
     };
     const button = new ToolbarButton({
-      className: 'clear-output-button',
-      label: 'fa-computer-classic',
-      onClick: clearOutput,
-      tooltip: 'Clear All Outputs',
+      className: 'sac-program-viewer-button',
+      icon: 'fa-regular fa-code',
+      onClick: openPanel,
+      tooltip: 'Opens the sac program in a seperate panel',
     });
 
-    panel.toolbar.insertItem(10, 'clearOutputs', button);
+    panel.toolbar.insertItem(10, 'openPanel', button);
     return new DisposableDelegate(() => {
       button.dispose();
     });
   }
 }
 
+
 /**
- * Activate the extension.
+ * Function to create a command
+ */
+function createCommand(app: JupyterFrontEnd){
+  const { commands } = app;
+  const command = 'sac:get-program';
+  commands.addCommand(command, {
+    label: 'Execute sac:get-program Command',
+    caption:'Execute sac:get-program Command',
+    execute: () => {
+      console.log('Command has been called')
+    },
+  });
+  return command;
+}
+
+
+/**
+ * Activate the extension and add command to the palette.
  *
  * @param app Main application object
+ * @param palette Command palette
  */
-function activate(app: JupyterFrontEnd): void {
+function activate(app: JupyterFrontEnd, palette: ICommandPalette): void {
   app.docRegistry.addWidgetExtension('Notebook', new ButtonExtension());
+
+  const category = 'Sac Commands';
+  const command = createCommand(app);
+  palette.addItem({ command, category, args: { origin: 'from palette' } });
 }
+
+export default extension;
+
+
 /*
     // Define a widget creator function,
     // then call it to make a new widget
@@ -104,5 +132,3 @@ function activate(app: JupyterFrontEnd): void {
     // Add the command to the palette.
     palette.addItem({ command, category: 'Tutorial' });
 */
-
-export default plugin;
