@@ -1,51 +1,74 @@
-import { 
-  JupyterFrontEnd, 
-  JupyterFrontEndPlugin 
-} from '@jupyterlab/application';
+import { JupyterFrontEnd, JupyterFrontEndPlugin } from '@jupyterlab/application';
+
+import { IDisposable, DisposableDelegate } from '@lumino/disposable';
+
+import { /*NotebookActions,*/ NotebookPanel, INotebookModel, } from '@jupyterlab/notebook';
+
+import { DocumentRegistry } from '@jupyterlab/docregistry';
 
 import { 
-  INotebookTracker, 
-  NotebookPanel 
-} from '@jupyterlab/notebook';
-
-import { 
-  ICommandPalette, 
+  // ICommandPalette, 
   // MainAreaWidget, 
-  ToolbarButton 
+  ToolbarButton, 
+  // UseSignal 
 } from '@jupyterlab/apputils';
 
-//import { Widget } from '@lumino/widgets';
+// import { Widget, Menu } from '@lumino/widgets';
+
 
 /**
- * Initialization data for the sac_program_viewer extension.
+ * The plugin registration information.
  */
-const extension: JupyterFrontEndPlugin<void> = {
-  id: 'sac_program_viewer',
+const plugin: JupyterFrontEndPlugin<void> = {
+  activate,
+  id: 'toolbar-button',
   autoStart: true,
-  requires: [ICommandPalette, INotebookTracker],
-  activate: (app: JupyterFrontEnd, palette: ICommandPalette, notebooks: INotebookTracker) => {
-    console.log('JupyterLab extension sac_program_viewer is active!');
+};
 
-    // Create a toolbar button for notebooks
-    let button = new ToolbarButton({
-      label: 'Sac Program Viewer Button',
-      iconClass: 'my-extension-icon',
-      onClick: () => {
-        // Get the currently active notebook panel
-        let current = notebooks.currentWidget as NotebookPanel;
-        if (!current) {
-          return;
-        }
 
-        // Add some text to the current cell
-        current.content.activeCell.model.value.text = 'Hello, JupyterLab!';
-      }
+/**
+ * A notebook widget extension that adds a button to the toolbar.
+ */
+export class ButtonExtension
+  implements DocumentRegistry.IWidgetExtension<NotebookPanel, INotebookModel>
+{
+  /**
+   * Create a new extension for the notebook panel widget.
+   *
+   * @param panel Notebook panel
+   * @param context Notebook context
+   * @returns Disposable on the added button
+   */
+  createNew(
+    panel: NotebookPanel,
+    context: DocumentRegistry.IContext<INotebookModel>
+  ): IDisposable {
+    const clearOutput = () => {
+      //NotebookActions.clearAllOutputs(panel.content);
+      console.log('You clicked a button')
+    };
+    const button = new ToolbarButton({
+      className: 'clear-output-button',
+      label: 'fa-computer-classic',
+      onClick: clearOutput,
+      tooltip: 'Clear All Outputs',
     });
 
-    // Add the toolbar button to the notebook toolbar
-    let toolbar = app.shell.currentWidget.toolbar;
-    toolbar.addItem('sac-program-viewer', button);
+    panel.toolbar.insertItem(10, 'clearOutputs', button);
+    return new DisposableDelegate(() => {
+      button.dispose();
+    });
+  }
+}
 
+/**
+ * Activate the extension.
+ *
+ * @param app Main application object
+ */
+function activate(app: JupyterFrontEnd): void {
+  app.docRegistry.addWidgetExtension('Notebook', new ButtonExtension());
+}
 /*
     // Define a widget creator function,
     // then call it to make a new widget
@@ -81,7 +104,5 @@ const extension: JupyterFrontEndPlugin<void> = {
     // Add the command to the palette.
     palette.addItem({ command, category: 'Tutorial' });
 */
-  }
-};
 
-export default extension;
+export default plugin;
