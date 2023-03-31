@@ -13,7 +13,18 @@ import {
   // UseSignal 
 } from '@jupyterlab/apputils';
 
+
 // import { Widget, Menu } from '@lumino/widgets';
+//import { openProgramSvg } from './style/icons';
+
+
+
+/**
+ * Helper functions
+ */
+function log(): void{
+  console.log('The command was')
+}
 
 
 /**
@@ -42,15 +53,15 @@ export class ButtonExtension
    */
   createNew(
     panel: NotebookPanel,
-    context: DocumentRegistry.IContext<INotebookModel>
+    context: DocumentRegistry.IContext<INotebookModel>,
   ): IDisposable {
     const openPanel = () => {
-      //NotebookActions.clearAllOutputs(panel.content);
-      console.log('You clicked a button')
+      log();
     };
     const button = new ToolbarButton({
       className: 'sac-program-viewer-button',
-      icon: 'fa-regular fa-code',
+      label: '*',
+      icon: 'fa-home',//openProgramSvg,
       onClick: openPanel,
       tooltip: 'Opens the sac program in a seperate panel',
     });
@@ -68,12 +79,12 @@ export class ButtonExtension
  */
 function createCommand(app: JupyterFrontEnd){
   const { commands } = app;
-  const command = 'sac:get-program';
+  const command: string = 'sac:get-program';
   commands.addCommand(command, {
     label: 'Execute sac:get-program Command',
     caption:'Execute sac:get-program Command',
     execute: () => {
-      console.log('Command has been called')
+      log();
     },
   });
   return command;
@@ -87,6 +98,7 @@ function createCommand(app: JupyterFrontEnd){
  * @param palette Command palette
  */
 function activate(app: JupyterFrontEnd, palette: ICommandPalette): void {
+  console.log('sac-program-viewer is activated!');
   app.docRegistry.addWidgetExtension('Notebook', new ButtonExtension());
 
   const category = 'Sac Commands';
