@@ -7,3 +7,5 @@ export const openProgramIcon = new LabIcon({
     name: 'sac:openProgram',
     svgstr: openProgramSvg
   });
+
+export default openProgramIcon;

@@ -6,17 +6,10 @@ import { /*NotebookActions,*/ NotebookPanel, INotebookModel, } from '@jupyterlab
 
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 
-import { 
-  ICommandPalette,
-  // MainAreaWidget, 
-  ToolbarButton, 
-  // UseSignal 
-} from '@jupyterlab/apputils';
+import { ICommandPalette, ToolbarButton } from '@jupyterlab/apputils';
 
-
-// import { Widget, Menu } from '@lumino/widgets';
-//import { openProgramSvg } from './style/icons';
-
+import { Widget } from '@lumino/widgets';
+import { openProgramIcon } from './style/icons';
 
 
 /**
@@ -61,7 +54,7 @@ export class ButtonExtension
     const button = new ToolbarButton({
       className: 'sac-program-viewer-button',
       label: '*',
-      icon: 'fa-home',//openProgramSvg,
+      icon: openProgramIcon,
       onClick: openPanel,
       tooltip: 'Opens the sac program in a seperate panel',
     });
@@ -78,16 +71,30 @@ export class ButtonExtension
  * Function to create a command
  */
 function createCommand(app: JupyterFrontEnd){
-  const { commands } = app;
+  const { commands, shell } = app;
   const command: string = 'sac:get-program';
   commands.addCommand(command, {
     label: 'Execute sac:get-program Command',
     caption:'Execute sac:get-program Command',
     execute: () => {
-      log();
+      const widget = new ProgramWidget();
+      shell.add(widget, 'main');
     },
   });
   return command;
+}
+
+/**
+ * Function to create widget panel
+ */
+class ProgramWidget extends Widget {
+  constructor() {
+    super();
+    this.addClass('jp-example-view');
+    this.id = 'simple-widget-example';
+    this.title.label = 'Widget Example View';
+    this.title.closable = true;
+  }
 }
 
 

@@ -20,5 +20,5 @@
     "target": "ES2018",
     "types": ["jest"]
   },
-  "include": ["src/stye/icons.ts", "src/*", "src/svg.d.ts"]
+  "include": ["src/style/icons.ts", "src/*", "src/svg.d.ts"]
 }
