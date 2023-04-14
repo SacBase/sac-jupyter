@@ -9,6 +9,7 @@ import { DocumentRegistry } from '@jupyterlab/docregistry';
 import { ICommandPalette, ToolbarButton } from '@jupyterlab/apputils';
 
 import { Widget } from '@lumino/widgets';
+
 import { openProgramIcon } from './style/icons';
 
 
@@ -16,7 +17,7 @@ import { openProgramIcon } from './style/icons';
  * Helper functions
  */
 function log(): void{
-  console.log('The command was')
+  console.log('The command was executed')
 }
 
 
@@ -53,7 +54,7 @@ export class ButtonExtension
     };
     const button = new ToolbarButton({
       className: 'sac-program-viewer-button',
-      label: '*',
+      label: '',
       icon: openProgramIcon,
       onClick: openPanel,
       tooltip: 'Opens the sac program in a seperate panel',
@@ -71,14 +72,15 @@ export class ButtonExtension
  * Function to create a command
  */
 function createCommand(app: JupyterFrontEnd){
-  const { commands, shell } = app;
+  //const { commands, shell } = app;
   const command: string = 'sac:get-program';
-  commands.addCommand(command, {
+  app.commands.addCommand(command, {
     label: 'Execute sac:get-program Command',
     caption:'Execute sac:get-program Command',
     execute: () => {
       const widget = new ProgramWidget();
-      shell.add(widget, 'main');
+      app.shell.add(widget, 'main');
+      log();
     },
   });
   return command;
@@ -90,13 +92,12 @@ function createCommand(app: JupyterFrontEnd){
 class ProgramWidget extends Widget {
   constructor() {
     super();
-    this.addClass('jp-example-view');
-    this.id = 'simple-widget-example';
-    this.title.label = 'Widget Example View';
+    this.addClass('sac-panel');
+    this.id = 'sac-panel';
+    this.title.label = 'SAC Program View';
     this.title.closable = true;
   }
 }
-
 
 /**
  * Activate the extension and add command to the palette.
@@ -114,40 +115,3 @@ function activate(app: JupyterFrontEnd, palette: ICommandPalette): void {
 }
 
 export default extension;
-
-
-/*
-    // Define a widget creator function,
-    // then call it to make a new widget
-    const newWidget = () => {
-      // Create a blank content widget inside of a MainAreaWidget
-      const content = new Widget();
-      const widget = new MainAreaWidget({ content });
-      widget.id = 'sac-jupyterlab';
-      widget.title.label = 'Current program';
-      widget.title.closable = true;
-      return widget;
-    }
-    let widget = newWidget();
-
-    // Add an application command
-    const command: string = 'sac:open';
-    app.commands.addCommand(command, {
-      label: 'Sac program viewer',
-      execute: () => {
-        // Regenerate the widget if disposed
-        if (widget.isDisposed) {
-          widget = newWidget();
-        }
-        if (!widget.isAttached) {
-          // Attach the widget to the main work area if it's not there
-          app.shell.add(widget, 'main');
-        }
-        // Activate the widget
-        app.shell.activateById(widget.id);
-      }
-    });
-
-    // Add the command to the palette.
-    palette.addItem({ command, category: 'Tutorial' });
-*/

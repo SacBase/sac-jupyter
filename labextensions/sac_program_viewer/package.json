@@ -55,10 +55,10 @@
     "watch:labextension": "jupyter labextension watch ."
   },
   "dependencies": {
-    "@jupyterlab/application": "^3.6.2",
-    "@jupyterlab/apputils": "3.5.0",
+    "@jupyterlab/application": "^3.6.3",
+    "@jupyterlab/apputils": "^3.6.3",
     "@jupyterlab/notebook": "^3.6.2",
-    "@lumino/widgets": "^2.0.1"
+    "@lumino/widgets": "^2.1.0"
   },
   "devDependencies": {
     "@babel/core": "^7.0.0",
