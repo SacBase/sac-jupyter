@@ -1,7 +1,0 @@
-{
-  "dependencies": {
-    "@jupyterlab/application": "^3.6.2",
-    "@jupyterlab/docregistry": "^3.6.2",
-    "@lumino/disposable": "^2.0.0"
-  }
-}
