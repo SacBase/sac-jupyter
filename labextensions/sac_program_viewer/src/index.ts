@@ -8,10 +8,15 @@ import { DocumentRegistry } from '@jupyterlab/docregistry';
 
 import { ICommandPalette, ToolbarButton } from '@jupyterlab/apputils';
 
-import { Widget } from '@lumino/widgets';
+//import { Widget } from '@lumino/widgets';
 
 import { openProgramIcon } from './style/icons';
 
+/*
+import { ILauncher } from '@jupyterlab/launcher';
+import { ITranslator } from '@jupyterlab/translation';
+import { ExamplePanel } from './panel';
+*/
 
 /**
  * Helper functions
@@ -78,8 +83,8 @@ function createCommand(app: JupyterFrontEnd){
     label: 'Execute sac:get-program Command',
     caption:'Execute sac:get-program Command',
     execute: () => {
-      const widget = new ProgramWidget();
-      app.shell.add(widget, 'main');
+      //const widget = new ProgramWidget();
+      //app.shell.add(widget, 'main');
       log();
     },
   });
@@ -89,6 +94,7 @@ function createCommand(app: JupyterFrontEnd){
 /**
  * Function to create widget panel
  */
+/*
 class ProgramWidget extends Widget {
   constructor() {
     super();
@@ -98,6 +104,7 @@ class ProgramWidget extends Widget {
     this.title.closable = true;
   }
 }
+*/
 
 /**
  * Activate the extension and add command to the palette.
