@@ -2,24 +2,23 @@ import { JupyterFrontEnd, JupyterFrontEndPlugin } from '@jupyterlab/application'
 
 import { IDisposable, DisposableDelegate } from '@lumino/disposable';
 
-import { /*NotebookActions,*/ NotebookPanel, INotebookModel, } from '@jupyterlab/notebook';
+import { NotebookPanel, INotebookModel, } from '@jupyterlab/notebook';
 
 import { DocumentRegistry } from '@jupyterlab/docregistry';
 
 import { ICommandPalette, ToolbarButton } from '@jupyterlab/apputils';
 
-//import { Widget } from '@lumino/widgets';
+//import { ILauncher } from '@jupyterlab/launcher';
 
+//import { ITranslator } from '@jupyterlab/translation';
+
+// Local imports
 import { openProgramIcon } from './style/icons';
-
-/*
-import { ILauncher } from '@jupyterlab/launcher';
-import { ITranslator } from '@jupyterlab/translation';
 import { ExamplePanel } from './panel';
-*/
+
 
 /**
- * Helper functions
+ * Log functions for testing
  */
 function log(): void{
   console.log('The command was executed')
@@ -56,6 +55,7 @@ export class ButtonExtension
   ): IDisposable {
     const openPanel = () => {
       log();
+      createPanel(app);
     };
     const button = new ToolbarButton({
       className: 'sac-program-viewer-button',
@@ -77,34 +77,31 @@ export class ButtonExtension
  * Function to create a command
  */
 function createCommand(app: JupyterFrontEnd){
-  //const { commands, shell } = app;
   const command: string = 'sac:get-program';
   app.commands.addCommand(command, {
     label: 'Execute sac:get-program Command',
     caption:'Execute sac:get-program Command',
     execute: () => {
-      //const widget = new ProgramWidget();
-      //app.shell.add(widget, 'main');
       log();
+      createPanel(app);
     },
   });
   return command;
 }
 
+
 /**
- * Function to create widget panel
- */
-/*
-class ProgramWidget extends Widget {
-  constructor() {
-    super();
-    this.addClass('sac-panel');
-    this.id = 'sac-panel';
-    this.title.label = 'SAC Program View';
-    this.title.closable = true;
-  }
+   * Creates an example panel from panel.ts.
+   *
+   * @returns The panel
+   */
+async function createPanel(app: JupyterFrontEnd): Promise<ExamplePanel> {
+  const manager = app.serviceManager;
+  const panel = new ExamplePanel(manager);
+  app.shell.add(panel, 'main');
+  return panel;
 }
-*/
+
 
 /**
  * Activate the extension and add command to the palette.
@@ -113,11 +110,15 @@ class ProgramWidget extends Widget {
  * @param palette Command palette
  */
 function activate(app: JupyterFrontEnd, palette: ICommandPalette): void {
-  console.log('sac-program-viewer is activated!');
-  app.docRegistry.addWidgetExtension('Notebook', new ButtonExtension());
-
   const category = 'Sac Commands';
   const command = createCommand(app);
+
+  console.log('sac-program-viewer is activated!');
+
+  // Add button to the notebook menu
+  app.docRegistry.addWidgetExtension('Notebook', new ButtonExtension());
+
+  // Add the command to the command palette and menu
   palette.addItem({ command, category, args: { origin: 'from palette' } });
 }
 
