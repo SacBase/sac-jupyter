@@ -221,7 +221,7 @@ Currently the following commands are available:
                    imports, functions and statements in the main.
     %flags      -- print flags that are used when running sac2c.
     %setflags <flags>
-                -- reset sac2c falgs to <flags>
+                -- reset sac2c flags to <flags>
 """
         else:
             return None
