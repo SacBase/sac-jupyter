@@ -14,6 +14,9 @@ import shlex
 
 import ctypes
 
+from matplotlib import pyplot as plt
+import importlib.util
+
 def rm_nonempty_dir (d):
     for root, dirs, files in os.walk (d, topdown=False):
         for name in files:
@@ -203,6 +206,8 @@ class SacKernel(Kernel):
         l = lines[0].strip ()
         if l == '%print':
             return self.mk_sacprg ("/* your expression  */", 1)
+        elif l == '%plot':
+            return plot(42)
         elif l == '%flags':
             return ' '.join (self.sac2c_flags)
         elif l.startswith ('%setflags'):
@@ -220,6 +225,17 @@ Currently the following commands are available:
 """
         else:
             return None
+
+    # Using matplotlib
+    def plot(self, data):
+        if importlib.util.find_spec('matplotlib') is None:
+            self.write_to_stderr("Matplotlib lirary not found. Install to enjoy fancy graphics.")
+            return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
+                        'user_expressions': {}}
+        else:
+            plt.plot([5, 2, 9, 4, 7], [10, 5, 8, 4, 2])
+            fig = plt.figure()
+            return fig 
 
     def mk_sacprg (self, txt, r):
 
