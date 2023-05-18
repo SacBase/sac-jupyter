@@ -28,7 +28,7 @@ function log(): void{
 /**
  * The plugin registration information.
  */
-const extension: JupyterFrontEndPlugin<void> = {
+const plugin: JupyterFrontEndPlugin<void> = {
   activate,
   id: 'sac-program-viewer',
   autoStart: true,
@@ -122,4 +122,4 @@ function activate(app: JupyterFrontEnd, palette: ICommandPalette): void {
   palette.addItem({ command, category, args: { origin: 'from palette' } });
 }
 
-export default extension;
+export default plugin;

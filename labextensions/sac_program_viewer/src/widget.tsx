@@ -17,7 +17,7 @@ export class KernelView extends ReactWidget {
           key="header-thread"
           className="jp-example-button"
           onClick={(): void => {
-            this._model.execute('3+5');
+            this._model.execute('%print');
           }}
         >
           Compute 3+5
