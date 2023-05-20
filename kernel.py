@@ -199,34 +199,33 @@ class SacKernel(Kernel):
         args = [self.sac2c_bin] + ['-o', binary_filename] + sac2cflags + [source_filename]
         return self.create_jupyter_subprocess(args)
 
-    #     return magics
+    #     return magics and a variable signaling %plot [...] was read
     def check_magics (self, code):
-        # print (code.splitlines ())
         lines = code.splitlines ()
         if len (lines) < 1:
-            return 0
+            return 0, False
         l = lines[0].strip ()
         if l == '%print':
-            return self.mk_sacprg ("/* your expression  */", 1)
+            return self.mk_sacprg ("/* your expression  */", 1), False
         elif l.startswith('%plot'):
-            return self.plot(lines)
+            return self.plot(lines), True
         elif l == '%flags':
-            return ' '.join (self.sac2c_flags)
+            return ' '.join (self.sac2c_flags), False
         elif l.startswith ('%setflags'):
             nl = shlex.split (l[len ('%setflags'):])
             self.sac2c_flags = nl
-            return "setting flags to: {}".format (nl)
+            return "setting flags to: {}".format (nl), False
         elif l == '%help':
-            return """\
+            return """\, 
 Currently the following commands are available:
     %plot [expression]  -- plot given expression (only works for 2d arrays!)
     %print              -- print the current program including
                            imports, functions and statements in the main.
     %flags              -- print flags that are used when running sac2c.
-    %setflags <flags>   -- reset sac2c falgs to <flags>
-"""
+    %setflags <flags>   -- reset sac2c flags to <flags>
+""", False
         else:
-            return None
+            return None, False
 
     def mk_sacprg (self, txt, r):
 
@@ -287,10 +286,12 @@ int main () {{
         if not silent:
             m = self.check_magics (code)
             if m is not None:
-                self._write_to_stdout (m)
+                if plot:
+                    self._write_png_to_stdout (m)
+                else :
+                    self._write_to_stdout (m)
                 return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],
                         'user_expressions': {}}
-
 
             r = self.check_sacprog_type (code)
             if r["status"] != "ok": # == -1:
@@ -358,7 +359,7 @@ int main () {{
             fig, ax = plt.subplots()
             # Data = list with one item ['%plot [...]']
             ls = eval(data[0][6:])
-            for i in len(ls):
+            for i in range(len(ls)):
                 ax.plot(ls[i])
             ax.set_xlabel(ls[0])
             return self.to_png(fig)
