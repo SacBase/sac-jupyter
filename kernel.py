@@ -219,8 +219,8 @@ class SacKernel(Kernel):
         l = lines[0].strip ()
         if l == '%print':
             return self.mk_sacprg ("/* your expression  */", 1)
-        elif l == '%plot':
-            return plot(42)
+        elif l.startswith('%plot '):
+            return self.plot(lines[6:])
         elif l == '%flags':
             return ' '.join (self.sac2c_flags)
         elif l.startswith ('%setflags'):
@@ -230,11 +230,11 @@ class SacKernel(Kernel):
         elif l == '%help':
             return """\
 Currently the following commands are available:
-    %print      -- print the current program including
-                   imports, functions and statements in the main.
-    %flags      -- print flags that are used when running sac2c.
-    %setflags <flags>
-                -- reset sac2c flags to <flags>
+    %plot [expression]  -- plot given expression (only works for 2d arrays!)
+    %print              -- print the current program including
+                           imports, functions and statements in the main.
+    %flags              -- print flags that are used when running sac2c.
+    %setflags <flags>   -- reset sac2c falgs to <flags>
 """
         else:
             return None
@@ -246,9 +246,16 @@ Currently the following commands are available:
             return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
                         'user_expressions': {}}
         else:
-            plt.plot([5, 2, 9, 4, 7], [10, 5, 8, 4, 2])
-            fig = plt.figure()
-            return fig 
+            fig, ax = plt.subplots()
+            ax.plot(data)
+            return self.to_png(fig)
+    
+    def to_png(self, fig):
+        # Return a base64-encoded PNG from a matplotlib figure.
+        imgdata = BytesIO()
+        fig.savefig(imgdata, format='png')
+        imgdata.seek(0)
+        return urllib.parse.quote(base64.b64encode(imgdata.getvalue()))
 
     def mk_sacprg (self, txt, r):
 
