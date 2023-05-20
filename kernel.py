@@ -183,17 +183,6 @@ class SacKernel(Kernel):
 
     def _write_to_stdout(self, contents):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': contents})
-    
-    def _write_png_to_stdout(self, png):
-        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'data': ('Plotting function')})
-        # We prepare the response with our rich data (the plot).
-        content = {'source': 'kernel',
-            # This dictionary may contain different MIME representations of the output.
-            'data': {'image/png': png},
-            'metadata' : { 'image/png' : {'width': 600,'height': 400}}
-        }
-        # We send the display_data message with the contents.
-        self.send_response(self.iopub_socket,'display_data', content)
 
     def _write_to_stderr(self, contents):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': contents})
@@ -219,8 +208,8 @@ class SacKernel(Kernel):
         l = lines[0].strip ()
         if l == '%print':
             return self.mk_sacprg ("/* your expression  */", 1)
-        elif l.startswith('%plot '):
-            return self.plot(lines[6:])
+        elif l.startswith('%plot'):
+            return self.plot(lines)
         elif l == '%flags':
             return ' '.join (self.sac2c_flags)
         elif l.startswith ('%setflags'):
@@ -238,24 +227,6 @@ Currently the following commands are available:
 """
         else:
             return None
-
-    # Using matplotlib
-    def plot(self, data):
-        if importlib.util.find_spec('matplotlib') is None:
-            self.write_to_stderr("Matplotlib lirary not found. Install to enjoy fancy graphics.")
-            return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
-                        'user_expressions': {}}
-        else:
-            fig, ax = plt.subplots()
-            ax.plot(data)
-            return self.to_png(fig)
-    
-    def to_png(self, fig):
-        # Return a base64-encoded PNG from a matplotlib figure.
-        imgdata = BytesIO()
-        fig.savefig(imgdata, format='png')
-        imgdata.seek(0)
-        return urllib.parse.quote(base64.b64encode(imgdata.getvalue()))
 
     def mk_sacprg (self, txt, r):
 
@@ -375,6 +346,38 @@ int main () {{
         """Cleanup the created source code files and executables when shutting down the kernel"""
         self.cleanup_files()
 
+    """
+    All functions associated with plotting
+    """
+    def plot(self, data):
+        if importlib.util.find_spec('matplotlib') is None:
+            self.write_to_stderr("Matplotlib lirary not found. Install to enjoy fancy graphics.")
+            return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
+                        'user_expressions': {}}
+        else:
+            fig, ax = plt.subplots()
+            # Data = list with one item ['%plot [...]']
+            ls = eval(data[0][6:])
+            for i in len(ls):
+                ax.plot(ls[i])
+            ax.set_xlabel(ls[0])
+            return self.to_png(fig)
+    
+    def to_png(self, fig):
+        # Return a base64-encoded PNG from a matplotlib figure.
+        imgdata = BytesIO()
+        fig.savefig(imgdata, format='png')
+        imgdata.seek(0)
+        return urllib.parse.quote(base64.b64encode(imgdata.getvalue()))
+
+    def _write_png_to_stdout(self, png):
+        #self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'data': ('Plotting function')})
+        content = {
+            'data': {'image/png': png},
+            'metadata' : { 'image/png' : {'width': 600,'height': 400}}
+        }
+        # We send the display_data message with the contents.
+        self.send_response(self.iopub_socket,'display_data', content)
 
 if __name__ == "__main__":
     from ipykernel.kernelapp import IPKernelApp
