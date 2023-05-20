@@ -208,7 +208,7 @@ class SacKernel(Kernel):
         if l == '%print':
             return self.mk_sacprg ("/* your expression  */", 1), False
         elif l.startswith('%plot'):
-            return self.plot(lines), True
+            return self.plot_exp(lines[0][6:]), True
         elif l == '%flags':
             return ' '.join (self.sac2c_flags), False
         elif l.startswith ('%setflags'):
@@ -350,19 +350,26 @@ int main () {{
     """
     All functions associated with plotting
     """
-    def plot(self, data):
+    def plot_exp(self, code):
         if importlib.util.find_spec('matplotlib') is None:
-            self.write_to_stderr("Matplotlib lirary not found. Install to enjoy fancy graphics.")
+            self._write_to_stderr("[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy graphics.")
             return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
                         'user_expressions': {}}
+        if code is '' or code is None:
+            self._write_to_stderr("[SaC kernel] Missing or empty argument for %plot")
+            return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
+                        'user_expressions': {}}
+        # code is '[...]'
+        fig, ax = plt.subplots()
+        if code[0] != '[':
+            #data = self.stmts[str(code)]
+            pass
         else:
-            fig, ax = plt.subplots()
-            # Data = list with one item ['%plot [...]']
-            ls = eval(data[0][6:])
-            for i in range(len(ls)):
-                ax.plot(ls[i])
-            ax.set_xlabel(ls[0])
-            return self.to_png(fig)
+            data = eval(code)
+            for i in range(len(data)):
+                ax.plot(data[i])
+        ax.set_xlabel(str(self.stmts))
+        return self.to_png(fig)
     
     def to_png(self, fig):
         # Return a base64-encoded PNG from a matplotlib figure.
