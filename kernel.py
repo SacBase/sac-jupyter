@@ -12,10 +12,12 @@ import os.path as path
 import json
 import shlex
 
-import ctypes
-
 from matplotlib import pyplot as plt
 import importlib.util
+from io import BytesIO
+import urllib, base64
+
+import ctypes
 
 def rm_nonempty_dir (d):
     for root, dirs, files in os.walk (d, topdown=False):
@@ -181,6 +183,17 @@ class SacKernel(Kernel):
 
     def _write_to_stdout(self, contents):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'text': contents})
+    
+    def _write_png_to_stdout(self, png):
+        self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'data': ('Plotting function')})
+        # We prepare the response with our rich data (the plot).
+        content = {'source': 'kernel',
+            # This dictionary may contain different MIME representations of the output.
+            'data': {'image/png': png},
+            'metadata' : { 'image/png' : {'width': 600,'height': 400}}
+        }
+        # We send the display_data message with the contents.
+        self.send_response(self.iopub_socket,'display_data', content)
 
     def _write_to_stderr(self, contents):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': contents})
