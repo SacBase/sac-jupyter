@@ -12,7 +12,8 @@ import os.path as path
 import json
 import shlex
 
-from matplotlib import pyplot as plt
+try: from matplotlib import pyplot as plt
+except: pass
 import importlib.util
 from io import BytesIO
 import urllib, base64
@@ -207,8 +208,10 @@ class SacKernel(Kernel):
         l = lines[0].strip ()
         if l == '%print':
             return self.mk_sacprg ("/* your expression  */", 1), False
+        elif l == '%export':
+            return self.export(), False
         elif l.startswith('%plot'):
-            return self.plot_exp(lines[0][6:]), True
+            return self.plot_exp(lines[0][6:]), True # lines is ['%plot [...]'])
         elif l == '%flags':
             return ' '.join (self.sac2c_flags), False
         elif l.startswith ('%setflags'):
@@ -218,9 +221,10 @@ class SacKernel(Kernel):
         elif l == '%help':
             return """\, 
 Currently the following commands are available:
-    %plot [expression]  -- plot given expression (only works for 2d arrays!)
+    %plot <expression>  -- plot given expression (!currently only works for 2d arrays!).
     %print              -- print the current program including
                            imports, functions and statements in the main.
+    %export             -- !Currently not implemented yet.
     %flags              -- print flags that are used when running sac2c.
     %setflags <flags>   -- reset sac2c flags to <flags>
 """, False
@@ -347,19 +351,22 @@ int main () {{
         """Cleanup the created source code files and executables when shutting down the kernel"""
         self.cleanup_files()
 
+    def export(self):
+        return "[SaC kernel] Not yet implemented"
+
+
     """
-    All functions associated with plotting
+    All functions associated with plotting via magic %plot
+        TODO: also use expressions
+        TODO: plot_exp() Ugly to return -1 when an error occurs
     """
     def plot_exp(self, code):
         if importlib.util.find_spec('matplotlib') is None:
             self._write_to_stderr("[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy graphics.")
-            return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
-                        'user_expressions': {}}
-        if code is '' or code is None:
+            return -1
+        if code == '': # code is '[...]'
             self._write_to_stderr("[SaC kernel] Missing or empty argument for %plot")
-            return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
-                        'user_expressions': {}}
-        # code is '[...]'
+            return -1
         fig, ax = plt.subplots()
         if code[0] != '[':
             #data = self.stmts[str(code)]
@@ -379,13 +386,13 @@ int main () {{
         return urllib.parse.quote(base64.b64encode(imgdata.getvalue()))
 
     def _write_png_to_stdout(self, png):
-        #self.send_response(self.iopub_socket, 'stream', {'name': 'stdout', 'data': ('Plotting function')})
-        content = {
-            'data': {'image/png': png},
-            'metadata' : { 'image/png' : {'width': 600,'height': 400}}
-        }
-        # We send the display_data message with the contents.
-        self.send_response(self.iopub_socket,'display_data', content)
+        if png != -1:
+            content = {
+                'data': {'image/png': png},
+                'metadata' : { 'image/png' : {'width': 600,'height': 400}}
+            }
+            # We send the display_data message with the contents.
+            self.send_response(self.iopub_socket,'display_data', content)
 
 if __name__ == "__main__":
     from ipykernel.kernelapp import IPKernelApp
