@@ -200,6 +200,9 @@ class SacKernel(Kernel):
         args = [self.sac2c_bin] + ['-o', binary_filename] + sac2cflags + [source_filename]
         return self.create_jupyter_subprocess(args)
 
+    def export(self):
+        return "[SaC kernel] Not yet implemented"
+
     #     return magics and a variable signaling %plot [...] was read
     def check_magics (self, code):
         lines = code.splitlines ()
@@ -351,10 +354,6 @@ int main () {{
         """Cleanup the created source code files and executables when shutting down the kernel"""
         self.cleanup_files()
 
-    def export(self):
-        return "[SaC kernel] Not yet implemented"
-
-
     """
     All functions associated with plotting via magic %plot
         TODO: also use expressions
@@ -362,14 +361,15 @@ int main () {{
     """
     def plot_exp(self, code):
         if importlib.util.find_spec('matplotlib') is None:
-            self._write_to_stderr("[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy graphics.")
+            self._write_to_stderr("[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations.")
             return -1
         if code == '': # code is '[...]'
             self._write_to_stderr("[SaC kernel] Missing or empty argument for %plot")
             return -1
         fig, ax = plt.subplots()
-        if code[0] != '[':
-            #data = self.stmts[str(code)]
+        if not code.startswith('['):
+            r = self.check_sacprog_type (code)
+            self.run_sacexp(code, r)
             pass
         else:
             data = eval(code)
@@ -391,7 +391,6 @@ int main () {{
                 'data': {'image/png': png},
                 'metadata' : { 'image/png' : {'width': 600,'height': 400}}
             }
-            # We send the display_data message with the contents.
             self.send_response(self.iopub_socket,'display_data', content)
 
 if __name__ == "__main__":
