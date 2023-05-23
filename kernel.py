@@ -120,7 +120,7 @@ class SacKernel(Kernel):
 
         # find global lib directory (different depending on sac2c version)
         sac_path_proc = subprocess.run ([self.sac2c_bin, "-plibsac2c"], capture_output=True, text=True)
-        sac_lib_path = sac_path_proc.stdout.strip(" \n")
+        sac_lib_path = sac_lib_path = sac_path_proc.stdout.strip(" \n")
         if "LD_LIBRARY_PATH" in os.environ:
             os.environ["LD_LIBRARY_PATH"] += sac_lib_path
         else:
@@ -233,7 +233,7 @@ Currently the following commands are available:
 """, False
         else:
             return None, False
-
+    
     def mk_sacprg (self, txt, r):
 
         stmts = "\n".join (self.stmts)
@@ -287,11 +287,48 @@ int main () {{
         p = prg.format (uses, imports, typedefs, funs, stmts)
         return p
 
+    def run_sacexp(self, code, r):
+        with self.new_temp_file(suffix='.sac') as source_file:
+            source_file.write(self.mk_sacprg (code, r["ret"]))
+            source_file.flush()
+            with self.new_temp_file(suffix='.exe') as binary_file:
+                p = self.compile_with_sac2c(source_file.name, binary_file.name)
+                #, magics['cflags'], magics['ldflags'])
+                while p.poll() is None:
+                    p.write_contents()
+                p.write_contents()
+                if p.returncode != 0:  # Compilation failed
+                    self._write_to_stderr(
+                            "[SaC kernel] sac2c exited with code {}, the executable will not be executed".format(
+                                    p.returncode))
+                    return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
+                            'user_expressions': {}}
+        p = self.create_jupyter_subprocess([binary_file.name]) # + magics['args'])
+        while p.poll() is None:
+            p.write_contents()
+        p.wait_for_threads()
+        p.write_contents()
+        if p.returncode != 0:
+            self._write_to_stderr("[SaC kernel] Executable exited with code {}".format(p.returncode))
+            return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
+                            'user_expressions': {}}
+        else:
+            if r["ret"] == 2: # stmts
+                self.stmts.append ("    "+code.replace ("\n", "\n    ")+"\n")
+            elif r["ret"] == 3: # funs
+                self.funs[r["symbol"]] = code
+            elif r["ret"] == 4: # typedef
+                self.typedefs[r["symbol"]] = code
+            elif r["ret"] == 5: # import
+                self.imports[r["symbol"]] = code
+            elif r["ret"] == 6: # use
+                self.uses[r["symbol"]] = code
+
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=False):
 
         if not silent:
-            m = self.check_magics (code)
+            m, plot = self.check_magics (code)
             if m is not None:
                 if plot:
                     self._write_png_to_stdout (m)
@@ -308,45 +345,7 @@ int main () {{
                 return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
                         'user_expressions': {}}
 
-
-            with self.new_temp_file(suffix='.sac') as source_file:
-                source_file.write(self.mk_sacprg (code, r["ret"]))
-                source_file.flush()
-                with self.new_temp_file(suffix='.exe') as binary_file:
-                    p = self.compile_with_sac2c(source_file.name, binary_file.name)
-                    #, magics['cflags'], magics['ldflags'])
-                    while p.poll() is None:
-                        p.write_contents()
-                    p.write_contents()
-                    if p.returncode != 0:  # Compilation failed
-                        self._write_to_stderr(
-                                "[SaC kernel] sac2c exited with code {}, the executable will not be executed".format(
-                                        p.returncode))
-                        return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
-                                'user_expressions': {}}
-
-            p = self.create_jupyter_subprocess([binary_file.name]) # + magics['args'])
-            while p.poll() is None:
-                p.write_contents()
-
-            p.wait_for_threads()
-            p.write_contents()
-
-            if p.returncode != 0:
-                self._write_to_stderr("[SaC kernel] Executable exited with code {}".format(p.returncode))
-                return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
-                                'user_expressions': {}}
-            else:
-                if r["ret"] == 2: # stmts
-                    self.stmts.append ("    "+code.replace ("\n", "\n    ")+"\n")
-                elif r["ret"] == 3: # funs
-                    self.funs[r["symbol"]] = code
-                elif r["ret"] == 4: # typedef
-                    self.typedefs[r["symbol"]] = code
-                elif r["ret"] == 5: # import
-                    self.imports[r["symbol"]] = code
-                elif r["ret"] == 6: # use
-                    self.uses[r["symbol"]] = code
+            self.run_sacexp(code, r)
 
         return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
 
@@ -392,6 +391,7 @@ int main () {{
                 'metadata' : { 'image/png' : {'width': 600,'height': 400}}
             }
             self.send_response(self.iopub_socket,'display_data', content)
+
 
 if __name__ == "__main__":
     from ipykernel.kernelapp import IPKernelApp
