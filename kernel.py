@@ -3,6 +3,8 @@ from threading import Thread
 from enum import Enum
 
 from ipykernel.kernelbase import Kernel
+
+import IPython
 import re
 import subprocess
 import tempfile
@@ -164,7 +166,9 @@ class Print(Action):
         return self.check_magic ('%print', code)
 
     def process_input(self, code):
-        return {'failed':False, 'stdout': self.kernel.mk_sacprg (), 'stderr':""}
+        return {'failed':False,
+                'stdout': self.kernel.mk_sacprg ("    /* StdIO::print ( your expression here ); */\n"),
+                'stderr': ""}
 
 
 
@@ -209,10 +213,10 @@ class Sac(Action):
         else:
             return {'found': self.check_sac_action (code), 'code': code}
 
-    def update_state (code):
+    def update_state (self, code):
         pass
 
-    def revert_state (code):
+    def revert_state (self, code):
         pass
 
     def mk_sac_prg ():
@@ -220,8 +224,8 @@ class Sac(Action):
 
     def process_input(self, code):
         self.update_state (code)
-        prg = self.kernel.mk_sacprg ()
-        res = self.kernel.create_binary ()
+        prg = self.kernel.mk_sacprg ("")
+        res = self.kernel.create_binary (prg)
         if (not (res['failed'])):
             res = self.kernel.run_binary ()
         return res
@@ -246,9 +250,9 @@ class SacExpr(Sac):
     def revert_state (self, code):
         self.expr = None
 
-    def mk_sacprg (self):
+    def mk_sacprg (self, goal):
         if (self.expr == None):
-            return "    /* StdIO::print ( your expression here ); */\n"
+            return goal
         else:
             return "\n    StdIO::print ({});\n".format (self.expr)
         
@@ -269,9 +273,9 @@ class SacStmt(Sac):
         self.stmts.append ("    "+code.replace ("\n", "\n    ")+"\n")
 
     def revert_state (self, code):
-        self.stmts.pop
+        self.stmts.pop ()
 
-    def mk_sacprg (self):
+    def mk_sacprg (self, goal):
         return "\nint main () {\n" + "".join (self.stmts)
 
 
@@ -294,7 +298,7 @@ class SacFun(Sac):
     def revert_state (self, code):
         self.funs[self.kernel.sac_check['symbol']] = self.old_def
 
-    def mk_sacprg (self):
+    def mk_sacprg (self, goal):
         return "\n// functions\n" + "".join (self.funs.values ()) +"\n"
 
 
@@ -317,7 +321,7 @@ class SacType(Sac):
     def revert_state (self, code):
         self.typedefs[self.kernel.sac_check['symbol']] = self.old_def
 
-    def mk_sacprg (self):
+    def mk_sacprg (self, goal):
         return "\n// typedefs\n" + "".join (self.typedefs.values ()) +"\n"
 
 
@@ -341,7 +345,7 @@ class SacImport(Sac):
     def revert_state (self, code):
         self.imports[self.kernel.sac_check['symbol']] = self.old_def
 
-    def mk_sacprg (self):
+    def mk_sacprg (self, goal):
         return "\n// imports\n" + "".join (self.imports.values ()) +"\n"
 
 
@@ -366,7 +370,7 @@ class SacUse(Sac):
     def revert_state (self, code):
         self.uses[self.kernel.sac_check['symbol']] = self.old_def
 
-    def mk_sacprg (self):
+    def mk_sacprg (self, goal):
         return "\n// uses\n" + "".join (self.uses.values ()) +"\n"
 
 
@@ -490,11 +494,11 @@ class SacKernel(Kernel):
                                   lambda contents: self.append_stderr (contents.decode()),
                                   self.tmpdir)
 
-    def mk_sacprg (self):
+    def mk_sacprg (self, goal):
         prg = ""
         for action in self.actions:
             if (issubclass (type(action), Sac)):
-                prg += action.mk_sacprg ()
+                prg += action.mk_sacprg (goal)
         prg += "    return 0;\n}"
         return prg;
 
@@ -504,9 +508,9 @@ class SacKernel(Kernel):
         args = [self.sac2c_bin] + ['-o', binary_filename] + sac2cflags + [source_filename]
         return self.create_jupyter_subprocess(args)
 
-    def create_binary (self):
+    def create_binary (self, prg):
         with self.new_temp_file(suffix='.sac') as source_file:
-            source_file.write(self.mk_sacprg ())
+            source_file.write(prg)
             source_file.flush()
             with self.new_temp_file(suffix='.exe') as binary_file:
                 p = self.compile_with_sac2c (source_file.name, binary_file.name)
