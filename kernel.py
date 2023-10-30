@@ -122,7 +122,7 @@ class SacKernel(Kernel):
 
         # find global lib directory (different depending on sac2c version)
         sac_path_proc = subprocess.run ([self.sac2c_bin, "-plibsac2c"], capture_output=True, text=True)
-        sac_lib_path = "/usr/local/libexec/sac2c/1.3.3-MijasCosta-1047-g0c4a5"
+        sac_lib_path = sac_lib_path = sac_path_proc.stdout.strip(" \n")
         if "LD_LIBRARY_PATH" in os.environ:
             os.environ["LD_LIBRARY_PATH"] += sac_lib_path
         else:
