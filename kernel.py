@@ -217,16 +217,15 @@ class Plot(Action):
         if importlib.util.find_spec('matplotlib') is None:
                 return {'failed': True, 'stdout':"", 'stderr':"[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations."}
         try:
-            variables = re.search("\((.+)\)(.*)\{", code[5:]) # Searches for (...){
+            variables = re.search("\((.+)\)(.*)\{", code) # Searches for (...){
             pltscrpt = (code.split(variables.group())[1])
             pltscrpt = pltscrpt[:len(pltscrpt)-1] # Remove '}'
             varls = variables.group(1).replace(" ", "").split(",")
         except:
-            self._write_to_stderr("[SaC kernel] Incorrect syntax for %plot")
-            return -1
+            return {'failed':True, 'stdout':"", 'stderr':"[SaC kernel] Incorrect syntax for %plot"}
         
         # get all the values from the variables
-        sac_varls = self.get_sac_variables(varls)
+        # sac_varls = self.get_sac_variables(varls)
 
         try:
             ldict = {}
@@ -236,13 +235,13 @@ class Plot(Action):
             # ax.set_xlabel(str(ldict))
         except Exception as e:
             fig, ax = plt.subplots() # No error is given at the return because fig is defined
-            self._write_to_stderr("[Python]" + str(e))
+            return {'failed':True, 'stdout':"", 'stderr':"[Python]" + str(e)}
         
         f = self.to_png(fig)
-        return {'failed':False, 'stdout':"", 'stderr':""}
+        return {'failed':False, 'stdout':"", 'stderr':"", 'stdoutpng':fig}
     
+    # Return a base64-encoded PNG from a matplotlib figure.
     def to_png(self, fig):
-        # Return a base64-encoded PNG from a matplotlib figure.
         imgdata = BytesIO()
         fig.savefig(imgdata, format='png')
         imgdata.seek(0)
@@ -283,24 +282,6 @@ class Sac(Action):
     def revert_input (self, code):
         self.revert_state (code)
 
-    # generic helper functions for dictionaries:
-
-    def push_symb_dict (self, mydict, code):
-        key = self.kernel.sac_check['symbol']
-        if (key in mydict):
-            res = mydict[key]
-        else:
-            res = None
-        mydict[key] = code
-        return res
-
-    def pop_symb_dict (self, mydict, code):
-        key = self.kernel.sac_check['symbol']
-        if (code == None):
-            del mydict[key]
-        else:
-            mydict[key] = code
-        
 #
 # Sac - expression
 #
@@ -357,10 +338,11 @@ class SacFun(Sac):
         return (self.kernel.sac_check['ret'] == 3)
 
     def update_state(self, code):
-        self.old_def = self.push_symb_dict (self.funs, code)
+        self.old_def = self.funs[self.kernel.sac_check['symbol']]
+        self.funs[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
-        self.pop_symb_dict (self.funs, self.old_def)
+        self.funs[self.kernel.sac_check['symbol']] = self.old_def
 
     def mk_sacprg (self, goal):
         return "\n// functions\n" + "".join (self.funs.values ()) +"\n"
@@ -378,10 +360,11 @@ class SacType(Sac):
         return (self.kernel.sac_check['ret'] == 4)
 
     def update_state(self, code):
-        self.old_def = self.push_symb_dict (self.typedefs, code)
+        self.old_def = self.typedefs[self.kernel.sac_check['symbol']]
+        self.typedefs[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
-        self.pop_symb_dict (self.typedefs, self.old_def)
+        self.typedefs[self.kernel.sac_check['symbol']] = self.old_def
 
     def mk_sacprg (self, goal):
         return "\n// typedefs\n" + "".join (self.typedefs.values ()) +"\n"
@@ -399,10 +382,11 @@ class SacImport(Sac):
         return (self.kernel.sac_check['ret'] == 5)
 
     def update_state(self, code):
-        self.old_def = self.push_symb_dict (self.imports, code)
+        self.old_def = self.imports[self.kernel.sac_check['symbol']]
+        self.imports[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
-        self.pop_symb_dict (self.imports, self.old_def)
+        self.imports[self.kernel.sac_check['symbol']] = self.old_def
 
     def mk_sacprg (self, goal):
         return "\n// imports\n" + "".join (self.imports.values ()) +"\n"
@@ -421,13 +405,14 @@ class SacUse(Sac):
         return (self.kernel.sac_check['ret'] == 6)
 
     def update_state(self, code):
-        self.old_def = self.push_symb_dict (self.uses, code)
+        self.old_def = self.uses[self.kernel.sac_check['symbol']]
+        self.uses[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
-        self.pop_symb_dict (self.uses, self.old_def)
+        self.uses[self.kernel.sac_check['symbol']] = self.old_def
 
     def mk_sacprg (self, goal):
-        return "\n// uses\n" + "\n".join (self.uses.values ()) +"\n"
+        return "\n// uses\n" + "".join (self.uses.values ()) +"\n"
 
 
         
@@ -625,6 +610,8 @@ class SacKernel(Kernel):
                         self._write_to_stdout (res['stdout'])
                     if (res['stderr'] != ""):
                         self._write_to_stderr (res['stderr'])
+                    if (res['stdoutpng'] == "0"):
+                        self._write_png_to_stdout(res['stdoutpng'])
                     break
             if ( not cres['found']): #we know that the Sac check has failed!
                 status = 'error'
