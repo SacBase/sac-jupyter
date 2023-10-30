@@ -193,7 +193,6 @@ class Flags(Action):
 
 
 
-
 #
 # %setflags  
 #
@@ -205,6 +204,55 @@ class Setflags(Action):
         self.kernel.sac2c_flags = shlex.split (code.splitlines ())
         return {'failed':False, 'stdout':"", 'stderr':""}
 
+
+
+#
+# %plot
+#
+class Plot(Action):
+    def check_input(self, code):
+        return self.check_magic ('%setflags', code)
+
+    def process_input(self, code):
+        self.kernel.sac2c_flags = shlex.split (code.splitlines ())
+        return {'failed':False, 'stdout':"", 'stderr':""}
+    
+    
+    #TODO: plot_exp() Ugly to return -1 when an error occurs
+    def plot_exp(self, code):
+        if importlib.util.find_spec('matplotlib') is None:
+            self._write_to_stderr("[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations.")
+            return -1
+        try:
+            variables = re.search("\((.+)\)(.*)\{", code[5:]) # Searches for (...){
+            pltscrpt = (code.split(variables.group())[1])
+            pltscrpt = pltscrpt[:len(pltscrpt)-1] # Remove '}'
+            varls = variables.group(1).replace(" ", "").split(",")
+        except:
+            self._write_to_stderr("[SaC kernel] Incorrect syntax for %plot")
+            return -1
+        
+        # get all the values from the variables
+        sac_varls = self.get_sac_variables(varls)
+
+        try:
+            ldict = {}
+            exec(pltscrpt,globals(),ldict)
+            # self._write_to_stderr(ldict)
+            fig = ldict['fig']
+            # ax.set_xlabel(str(ldict))
+        except Exception as e:
+            fig, ax = plt.subplots() # No error is given at the return because fig is defined
+            self._write_to_stderr("[Python]" + str(e))
+        
+        return self.to_png(fig)
+    
+    def to_png(self, fig):
+        # Return a base64-encoded PNG from a matplotlib figure.
+        imgdata = BytesIO()
+        fig.savefig(imgdata, format='png')
+        imgdata.seek(0)
+        return urllib.parse.quote(base64.b64encode(imgdata.getvalue()))
 
 
 
@@ -264,8 +312,6 @@ class SacExpr(Sac):
         else:
             return "\n    StdIO::print ({});\n".format (self.expr)
         
-    
-
 #
 # Sac - statement
 #
@@ -286,7 +332,6 @@ class SacStmt(Sac):
     def mk_sacprg (self, goal):
         return "\nint main () {\n" + "".join (self.stmts)
 
-
 #
 # Sac - function
 #
@@ -300,7 +345,7 @@ class SacFun(Sac):
         return (self.kernel.sac_check['ret'] == 3)
 
     def update_state(self, code):
-        self.old_def = elf.funs[self.kernel.sac_check['symbol']]
+        self.old_def = self.funs[self.kernel.sac_check['symbol']]
         self.funs[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
@@ -308,7 +353,6 @@ class SacFun(Sac):
 
     def mk_sacprg (self, goal):
         return "\n// functions\n" + "".join (self.funs.values ()) +"\n"
-
 
 #
 # Sac - typedef
@@ -332,8 +376,6 @@ class SacType(Sac):
     def mk_sacprg (self, goal):
         return "\n// typedefs\n" + "".join (self.typedefs.values ()) +"\n"
 
-
-
 #
 # Sac - import
 #
@@ -355,8 +397,6 @@ class SacImport(Sac):
 
     def mk_sacprg (self, goal):
         return "\n// imports\n" + "".join (self.imports.values ()) +"\n"
-
-
 
 #
 # Sac - use
@@ -383,6 +423,7 @@ class SacUse(Sac):
 
 
         
+
 
 
 #
@@ -488,6 +529,14 @@ class SacKernel(Kernel):
     def _write_to_stderr(self, contents):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': contents})
 
+    def _write_png_to_stdout(self, png):
+        if png != -1:
+            content = {
+                'data': {'image/png': png},
+                'metadata' : { 'image/png' : {'width': 600,'height': 400}}
+            }
+            self.send_response(self.iopub_socket,'display_data', content)
+
     def append_stdout (self, txt):
         self.stdout += txt
 
@@ -580,64 +629,6 @@ class SacKernel(Kernel):
     def do_shutdown(self, restart):
         """Cleanup the created source code files and executables when shutting down the kernel"""
         self.cleanup_files()
-
-    def get_sac_variables(self, variables):
-        """Used to communicate with and send variables to the sac compiler"""
-        msg = f"char msg[] = printf({variables})"
-        c_code = f"{msg};\nFILE *process = popen(\"python3 ./kernel.py\",\"w\");\nif (process == NULL) return 1;\nfprintf(process, \"%s\\n\", \"msg\");\npclose(process);"
-        
-        self.run_sacexp(c_code, self.check_sacprog_type (c_code))
-        for line in sys.stdin:
-            return line
-
-    """
-    All functions associated with plotting via magic %plot
-
-        TODO: plot_exp() Ugly to return -1 when an error occurs
-    """
-    def plot_exp(self, code):
-        if importlib.util.find_spec('matplotlib') is None:
-            self._write_to_stderr("[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations.")
-            return -1
-        try:
-            variables = re.search("\((.+)\)(.*)\{", code[5:]) # Searches for (...){
-            pltscrpt = (code.split(variables.group())[1])
-            pltscrpt = pltscrpt[:len(pltscrpt)-1] # Remove '}'
-            varls = variables.group(1).replace(" ", "").split(",")
-        except:
-            self._write_to_stderr("[SaC kernel] Incorrect syntax for %plot")
-            return -1
-        
-        # get all the values from the variables
-        sac_varls = self.get_sac_variables(varls)
-
-        try:
-            ldict = {}
-            exec(pltscrpt,globals(),ldict)
-            # self._write_to_stderr(ldict)
-            fig = ldict['fig']
-            # ax.set_xlabel(str(ldict))
-        except Exception as e:
-            fig, ax = plt.subplots() # No error is given at the return because fig is defined
-            self._write_to_stderr("[Python]" + str(e))
-        
-        return self.to_png(fig)
-    
-    def to_png(self, fig):
-        # Return a base64-encoded PNG from a matplotlib figure.
-        imgdata = BytesIO()
-        fig.savefig(imgdata, format='png')
-        imgdata.seek(0)
-        return urllib.parse.quote(base64.b64encode(imgdata.getvalue()))
-
-    def _write_png_to_stdout(self, png):
-        if png != -1:
-            content = {
-                'data': {'image/png': png},
-                'metadata' : { 'image/png' : {'width': 600,'height': 400}}
-            }
-            self.send_response(self.iopub_socket,'display_data', content)
-
 
 if __name__ == "__main__":
     from ipykernel.kernelapp import IPKernelApp
