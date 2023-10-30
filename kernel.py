@@ -211,18 +211,11 @@ class Setflags(Action):
 #
 class Plot(Action):
     def check_input(self, code):
-        return self.check_magic ('%setflags', code)
+        return self.check_magic ('%plot', code)
 
     def process_input(self, code):
-        self.kernel.sac2c_flags = shlex.split (code.splitlines ())
-        return {'failed':False, 'stdout':"", 'stderr':""}
-    
-    
-    #TODO: plot_exp() Ugly to return -1 when an error occurs
-    def plot_exp(self, code):
         if importlib.util.find_spec('matplotlib') is None:
-            self._write_to_stderr("[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations.")
-            return -1
+                return {'failed': True, 'stdout':"", 'stderr':"[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations."}
         try:
             variables = re.search("\((.+)\)(.*)\{", code[5:]) # Searches for (...){
             pltscrpt = (code.split(variables.group())[1])
@@ -245,7 +238,8 @@ class Plot(Action):
             fig, ax = plt.subplots() # No error is given at the return because fig is defined
             self._write_to_stderr("[Python]" + str(e))
         
-        return self.to_png(fig)
+        f = self.to_png(fig)
+        return {'failed':False, 'stdout':"", 'stderr':""}
     
     def to_png(self, fig):
         # Return a base64-encoded PNG from a matplotlib figure.
@@ -442,7 +436,7 @@ class SacKernel(Kernel):
              "Uses sac2c, to incrementaly compile the notebook.\n"
     def __init__(self, *args, **kwargs):
         super(SacKernel, self).__init__(*args, **kwargs)
-        self.actions = [Help (self), Print (self), Flags (self), Setflags (self),
+        self.actions = [Help (self), Print (self), Flags (self), Setflags (self), Plot(self),
                         SacUse (self), SacImport (self), SacType (self),
                         SacFun (self), SacStmt (self), SacExpr (self)]
         self.files = []
@@ -461,7 +455,7 @@ class SacKernel(Kernel):
 
         # find global lib directory (different depending on sac2c version)
         sac_path_proc = subprocess.run ([self.sac2c_bin, "-plibsac2c"], capture_output=True, text=True)
-        sac_lib_path = sac_lib_path = sac_path_proc.stdout.strip(" \n")
+        sac_lib_path = "/usr/local/libexec/sac2c/1.3.3-MijasCosta-1047-g0c4a5"
         if "LD_LIBRARY_PATH" in os.environ:
             os.environ["LD_LIBRARY_PATH"] += sac_lib_path
         else:
