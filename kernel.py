@@ -217,15 +217,18 @@ class Plot(Action):
         if importlib.util.find_spec('matplotlib') is None:
                 return {'failed': True, 'stdout':"", 'stderr':"[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations."}
         try:
-            variables = re.search("\((.+)\)(.*)\{", code) # Searches for (...){
-            pltscrpt = (code.split(variables.group())[1])
+            py_vars = re.search("\((.+)\)(.*)\{", code) # Search for (...){
+            pltscrpt = (code.split(py_vars.group())[1])
             pltscrpt = pltscrpt[:len(pltscrpt)-1] # Remove '}'
-            varls = variables.group(1).replace(" ", "").split(",")
+            varls = py_vars.group(1).replace(" ", "").split(",")
         except:
             return {'failed':True, 'stdout':"", 'stderr':"[SaC kernel] Incorrect syntax for %plot"}
         
-        # get all the values from the variables
-        # sac_varls = self.get_sac_variables(varls)
+        # self.update_state(f"print({varls})")
+        # prg = self.kernel.mk_sacprg (f"print({varls})")
+        # res = self.kernel.create_binary (prg)
+        # if (not (res['failed'])):
+        #     res = self.kernel.run_binary ()
 
         try:
             ldict = {}
@@ -237,8 +240,8 @@ class Plot(Action):
             fig, ax = plt.subplots() # No error is given at the return because fig is defined
             return {'failed':True, 'stdout':"", 'stderr':"[Python]" + str(e)}
         
-        f = self.to_png(fig)
-        return {'failed':False, 'stdout':"", 'stderr':"", 'stdoutpng':fig}
+        SacKernel._write_png_to_stdout(SacKernel, self.to_png(fig)) 
+        return {'failed':False, 'stdout':"", 'stderr':""}
     
     # Return a base64-encoded PNG from a matplotlib figure.
     def to_png(self, fig):
@@ -610,8 +613,6 @@ class SacKernel(Kernel):
                         self._write_to_stdout (res['stdout'])
                     if (res['stderr'] != ""):
                         self._write_to_stderr (res['stderr'])
-                    if (res['stdoutpng'] == "0"):
-                        self._write_png_to_stdout(res['stdoutpng'])
                     break
             if ( not cres['found']): #we know that the Sac check has failed!
                 status = 'error'
