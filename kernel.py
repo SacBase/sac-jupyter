@@ -240,7 +240,7 @@ class Plot(Action):
             fig, ax = plt.subplots() # No error is given at the return because fig is defined
             return {'failed':True, 'stdout':"", 'stderr':"[Python]" + str(e)}
         
-        SacKernel._write_png_to_stdout(SacKernel, self.to_png(fig)) 
+        self.kernel._write_png_to_stdout(self.to_png(fig)) 
         return {'failed':False, 'stdout':"", 'stderr':""}
     
     # Return a base64-encoded PNG from a matplotlib figure.
