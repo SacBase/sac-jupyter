@@ -283,6 +283,24 @@ class Sac(Action):
     def revert_input (self, code):
         self.revert_state (code)
 
+    # generic helper functions for dictionaries:
+
+    def push_symb_dict (self, mydict, code):
+        key = self.kernel.sac_check['symbol']
+        if (key in mydict):
+            res = mydict[key]
+        else:
+            res = None
+        mydict[key] = code
+        return res
+
+    def pop_symb_dict (self, mydict, code):
+        key = self.kernel.sac_check['symbol']
+        if (code == None):
+            del mydict[key]
+        else:
+            mydict[key] = code
+        
 #
 # Sac - expression
 #
@@ -339,11 +357,10 @@ class SacFun(Sac):
         return (self.kernel.sac_check['ret'] == 3)
 
     def update_state(self, code):
-        self.old_def = self.funs[self.kernel.sac_check['symbol']]
-        self.funs[self.kernel.sac_check['symbol']] = code
+        self.old_def = self.push_symb_dict (self.funs, code)
 
     def revert_state (self, code):
-        self.funs[self.kernel.sac_check['symbol']] = self.old_def
+        self.pop_symb_dict (self.funs, self.old_def)
 
     def mk_sacprg (self, goal):
         return "\n// functions\n" + "".join (self.funs.values ()) +"\n"
@@ -361,11 +378,10 @@ class SacType(Sac):
         return (self.kernel.sac_check['ret'] == 4)
 
     def update_state(self, code):
-        self.old_def = self.typedefs[self.kernel.sac_check['symbol']]
-        self.typedefs[self.kernel.sac_check['symbol']] = code
+        self.old_def = self.push_symb_dict (self.typedefs, code)
 
     def revert_state (self, code):
-        self.typedefs[self.kernel.sac_check['symbol']] = self.old_def
+        self.pop_symb_dict (self.typedefs, self.old_def)
 
     def mk_sacprg (self, goal):
         return "\n// typedefs\n" + "".join (self.typedefs.values ()) +"\n"
@@ -383,11 +399,10 @@ class SacImport(Sac):
         return (self.kernel.sac_check['ret'] == 5)
 
     def update_state(self, code):
-        self.old_def = self.imports[self.kernel.sac_check['symbol']]
-        self.imports[self.kernel.sac_check['symbol']] = code
+        self.old_def = self.push_symb_dict (self.imports, code)
 
     def revert_state (self, code):
-        self.imports[self.kernel.sac_check['symbol']] = self.old_def
+        self.pop_symb_dict (self.imports, self.old_def)
 
     def mk_sacprg (self, goal):
         return "\n// imports\n" + "".join (self.imports.values ()) +"\n"
@@ -406,14 +421,13 @@ class SacUse(Sac):
         return (self.kernel.sac_check['ret'] == 6)
 
     def update_state(self, code):
-        self.old_def = self.uses[self.kernel.sac_check['symbol']]
-        self.uses[self.kernel.sac_check['symbol']] = code
+        self.old_def = self.push_symb_dict (self.uses, code)
 
     def revert_state (self, code):
-        self.uses[self.kernel.sac_check['symbol']] = self.old_def
+        self.pop_symb_dict (self.uses, self.old_def)
 
     def mk_sacprg (self, goal):
-        return "\n// uses\n" + "".join (self.uses.values ()) +"\n"
+        return "\n// uses\n" + "\n".join (self.uses.values ()) +"\n"
 
 
         
