@@ -11,7 +11,9 @@ import os
 import os.path as path
 import json
 import shlex
+import sys
 
+# Used for plotting magics
 try: from matplotlib import pyplot as plt
 except: pass
 import importlib.util
@@ -120,7 +122,7 @@ class SacKernel(Kernel):
 
         # find global lib directory (different depending on sac2c version)
         sac_path_proc = subprocess.run ([self.sac2c_bin, "-plibsac2c"], capture_output=True, text=True)
-        sac_lib_path = sac_lib_path = sac_path_proc.stdout.strip(" \n")
+        sac_lib_path = "/usr/local/libexec/sac2c/1.3.3-MijasCosta-1047-g0c4a5"
         if "LD_LIBRARY_PATH" in os.environ:
             os.environ["LD_LIBRARY_PATH"] += sac_lib_path
         else:
@@ -205,16 +207,15 @@ class SacKernel(Kernel):
 
     #     return magics and a variable signaling %plot [...] was read
     def check_magics (self, code):
-        lines = code.splitlines ()
-        if len (lines) < 1:
+        if len (code) < 1:
             return 0, False
-        l = lines[0].strip ()
+        l = code.strip()
         if l == '%print':
             return self.mk_sacprg ("/* your expression  */", 1), False
         elif l == '%export':
             return self.export(), False
         elif l.startswith('%plot'):
-            return self.plot_exp(lines[0][6:]), True # lines is ['%plot [...]'])
+            return self.plot_exp(code), True 
         elif l == '%flags':
             return ' '.join (self.sac2c_flags), False
         elif l.startswith ('%setflags'):
@@ -222,14 +223,13 @@ class SacKernel(Kernel):
             self.sac2c_flags = nl
             return "setting flags to: {}".format (nl), False
         elif l == '%help':
-            return """\, 
+            return """
 Currently the following commands are available:
-    %plot <expression>  -- plot given expression (!currently only works for 2d arrays!).
-    %print              -- print the current program including
-                           imports, functions and statements in the main.
-    %export             -- !Currently not implemented yet.
-    %flags              -- print flags that are used when running sac2c.
-    %setflags <flags>   -- reset sac2c flags to <flags>
+    %plot (<sac variables>) {<expression>}  -- plot given python matplotlib code.
+    %print                                  -- print the current program including
+                                               imports, functions and statements in the main.
+    %flags                                  -- print flags that are used when running sac2c.
+    %setflags <flags>                       -- reset sac2c flags to <flags>
 """, False
         else:
             return None, False
@@ -293,7 +293,6 @@ int main () {{
             source_file.flush()
             with self.new_temp_file(suffix='.exe') as binary_file:
                 p = self.compile_with_sac2c(source_file.name, binary_file.name)
-                #, magics['cflags'], magics['ldflags'])
                 while p.poll() is None:
                     p.write_contents()
                 p.write_contents()
@@ -324,9 +323,18 @@ int main () {{
             elif r["ret"] == 6: # use
                 self.uses[r["symbol"]] = code
 
+    def get_sacprog_type(self, code):
+        r = self.check_sacprog_type (code)
+        if r["status"] != "ok": # == -1:
+            self._write_to_stderr(
+                    "[SaC kernel] This is not an expression/statements/function or use/import/typedef\n"
+                    + r["stderr"])
+            return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
+                    'user_expressions': {}}
+        return r
+
     def do_execute(self, code, silent, store_history=True,
                    user_expressions=None, allow_stdin=False):
-
         if not silent:
             m, plot = self.check_magics (code)
             if m is not None:
@@ -336,15 +344,7 @@ int main () {{
                     self._write_to_stdout (m)
                 return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [],
                         'user_expressions': {}}
-
-            r = self.check_sacprog_type (code)
-            if r["status"] != "ok": # == -1:
-                self._write_to_stderr(
-                        "[SaC kernel] This is not an expression/statements/function or use/import/typedef\n"
-                        + r["stderr"])
-                return {'status': 'error', 'execution_count': self.execution_count, 'payload': [],
-                        'user_expressions': {}}
-
+            r = self.get_sacprog_type(code)
             self.run_sacexp(code, r)
 
         return {'status': 'ok', 'execution_count': self.execution_count, 'payload': [], 'user_expressions': {}}
@@ -353,28 +353,46 @@ int main () {{
         """Cleanup the created source code files and executables when shutting down the kernel"""
         self.cleanup_files()
 
+    def get_sac_variables(self, variables):
+        """Used to communicate with and send variables to the sac compiler"""
+        msg = f"char msg[] = printf({variables})"
+        c_code = f"{msg};\nFILE *process = popen(\"python3 ./kernel.py\",\"w\");\nif (process == NULL) return 1;\nfprintf(process, \"%s\\n\", \"msg\");\npclose(process);"
+        
+        self.run_sacexp(c_code, self.check_sacprog_type (c_code))
+        for line in sys.stdin:
+            return line
+
     """
     All functions associated with plotting via magic %plot
-        TODO: also use expressions
+
         TODO: plot_exp() Ugly to return -1 when an error occurs
     """
     def plot_exp(self, code):
         if importlib.util.find_spec('matplotlib') is None:
             self._write_to_stderr("[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations.")
             return -1
-        if code == '': # code is '[...]'
-            self._write_to_stderr("[SaC kernel] Missing or empty argument for %plot")
+        try:
+            variables = re.search("\((.+)\)(.*)\{", code[5:]) # Searches for (...){
+            pltscrpt = (code.split(variables.group())[1])
+            pltscrpt = pltscrpt[:len(pltscrpt)-1] # Remove '}'
+            varls = variables.group(1).replace(" ", "").split(",")
+        except:
+            self._write_to_stderr("[SaC kernel] Incorrect syntax for %plot")
             return -1
-        fig, ax = plt.subplots()
-        if not code.startswith('['):
-            r = self.check_sacprog_type (code)
-            self.run_sacexp(code, r)
-            pass
-        else:
-            data = eval(code)
-            for i in range(len(data)):
-                ax.plot(data[i])
-        ax.set_xlabel(str(self.stmts))
+        
+        # get all the values from the variables
+        sac_varls = self.get_sac_variables(varls)
+
+        try:
+            ldict = {}
+            exec(pltscrpt,globals(),ldict)
+            # self._write_to_stderr(ldict)
+            fig = ldict['fig']
+            # ax.set_xlabel(str(ldict))
+        except Exception as e:
+            fig, ax = plt.subplots() # No error is given at the return because fig is defined
+            self._write_to_stderr("[Python]" + str(e))
+        
         return self.to_png(fig)
     
     def to_png(self, fig):
