@@ -132,6 +132,7 @@ class Action:
         pass
 
     def check_magic (self, magic, code):
+        code = code.strip ()
         if code.startswith (magic):
             return {'found': True, 'code': code[len (magic):]}
         else:
@@ -194,7 +195,7 @@ class Setflags(Action):
         return self.check_magic ('%setflags', code)
 
     def process_input(self, code):
-        self.kernel.sac2c_flags = shlex.split (code.splitlines ())
+        self.kernel.sac2c_flags = shlex.split (code)
         return {'failed':False, 'stdout':"", 'stderr':""}
 
 
