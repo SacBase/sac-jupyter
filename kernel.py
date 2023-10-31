@@ -157,11 +157,12 @@ class Help(Action):
     def process_input(self, code):
         return {'failed':False, 'stdout':"""\
 Currently the following commands are available:
-    %print      -- print the current program including
-                   imports, functions and statements in the main.
-    %flags      -- print flags that are used when running sac2c.
-    %setflags <flags>
-                -- reset sac2c falgs to <flags>
+    %plot (<sac variables>){<code>} -- plot SaC variables using matplotlib python syntax.
+                                       The python code should start with <fig, ax = plt.subplots>
+    %print                          -- print the current program including
+                                       imports, functions and statements in the main.
+    %flags                          -- print flags that are used when running sac2c.
+    %setflags <flags>               -- reset sac2c falgs to <flags>.
 """, 'stderr':""}
 
 
@@ -215,40 +216,50 @@ class Plot(Action):
 
     def process_input(self, code):
         if importlib.util.find_spec('matplotlib') is None:
-                return {'failed': True, 'stdout':"", 'stderr':"[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations."}
-        try:
-            py_vars = re.search("\((.+)\)(.*)\{", code) # Search for (...){
-            pltscrpt = (code.split(py_vars.group())[1])
-            pltscrpt = pltscrpt[:len(pltscrpt)-1] # Remove '}'
-            varls = py_vars.group(1).replace(" ", "").split(",")
-        except:
-            return {'failed':True, 'stdout':"", 'stderr':"[SaC kernel] Incorrect syntax for %plot"}
+            return {'failed': True, 'stdout':"", 'stderr':"[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations."}
         
-        # self.update_state(f"print({varls})")
-        # prg = self.kernel.mk_sacprg (f"print({varls})")
-        # res = self.kernel.create_binary (prg)
-        # if (not (res['failed'])):
-        #     res = self.kernel.run_binary ()
+        try: pltscrpt, variables = self.parse_input(code)
+        except: return {'failed':True, 'stdout':"", 'stderr':"[SaC kernel] Incorrect syntax for %plot"}
+        
+        sac_variables = self.get_sac_variables(variables)
+        if sac_variables == []:
+            return {'failed':True, 'stdout':"", 'stderr':f"[Sac kernel] Problem with variables {variables}. Probably not declared yet"}
+        
+        ldict = {'a':[8,9,5,11]}
+        # process variables
+        # for i in range(len(sac_variables)):
+            # ldict[variables[i]] = eval(sac_variables[i])
 
         try:
-            ldict = {}
             exec(pltscrpt,globals(),ldict)
-            # self._write_to_stderr(ldict)
             fig = ldict['fig']
-            # ax.set_xlabel(str(ldict))
         except Exception as e:
-            fig, ax = plt.subplots() # No error is given at the return because fig is defined
             return {'failed':True, 'stdout':"", 'stderr':"[Python]" + str(e)}
         
         self.kernel._write_png_to_stdout(self.to_png(fig)) 
         return {'failed':False, 'stdout':"", 'stderr':""}
     
+
     # Return a base64-encoded PNG from a matplotlib figure.
     def to_png(self, fig):
         imgdata = BytesIO()
         fig.savefig(imgdata, format='png')
         imgdata.seek(0)
         return urllib.parse.quote(base64.b64encode(imgdata.getvalue()))
+    # get sac variables in python format
+    def get_sac_variables(self, variables):
+        sac_variables = []
+        for v in variables:
+            prg = self.kernel.mk_sacprg("\n    StdIO::print ({});\n".format (v))
+            res = self.kernel.create_binary(prg)
+            if (not (res['failed'])):
+                sac_variables.append(self.kernel.run_binary())
+        return sac_variables
+    def parse_input(self, code):
+        py_variables = re.search("\((.+)\)(.*)\{", code) # Search for (...){
+        plot_script = (code.split(py_variables.group())[1])[:-1] # Remove '}' and the variables
+        variables = py_variables.group(1).replace(" ", "").split(",") # Convert to list
+        return plot_script, variables
 
 
 
