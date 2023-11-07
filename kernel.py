@@ -16,7 +16,7 @@ import json
 import shlex
 import sys
 
-# Used for plotting magics
+# Used for plotting
 try: from matplotlib import pyplot as plt
 except: pass
 import importlib.util
@@ -158,7 +158,7 @@ class Help(Action):
         return {'failed':False, 'stdout':"""\
 Currently the following commands are available:
     %plot (<sac variables>){<code>} -- plot SaC variables using matplotlib python syntax.
-                                       The python code should start with <fig, ax = plt.subplots>
+                                       The python code should start with <fig, ax = plt.subplots()>
     %print                          -- print the current program including
                                        imports, functions and statements in the main.
     %flags                          -- print flags that are used when running sac2c.
@@ -223,10 +223,9 @@ class Plot(Action):
         
         sac_variables = self.get_sac_variables(variables)
         if sac_variables == []:
-            return {'failed':True, 'stdout':"", 'stderr':f"[Sac kernel] Problem with variables {variables}. Probably not declared yet"}
+            return {'failed':True, 'stdout':"", 'stderr':f"[Sac kernel] Problem with variables: {variables}. Probably not declared yet"}
         
         ldict = {'a':[8,9,5,11]}
-        # process variables
         # for i in range(len(sac_variables)):
             # ldict[variables[i]] = eval(sac_variables[i])
 
@@ -239,7 +238,6 @@ class Plot(Action):
         self.kernel._write_png_to_stdout(self.to_png(fig)) 
         return {'failed':False, 'stdout':"", 'stderr':""}
     
-
     # Return a base64-encoded PNG from a matplotlib figure.
     def to_png(self, fig):
         imgdata = BytesIO()
@@ -250,7 +248,7 @@ class Plot(Action):
     def get_sac_variables(self, variables):
         sac_variables = []
         for v in variables:
-            prg = self.kernel.mk_sacprg("\n    StdIO::print ({});\n".format (v))
+            prg = self.kernel.mk_sacprg("\n    pyArrPrint({});\n".format (v))
             res = self.kernel.create_binary(prg)
             if (not (res['failed'])):
                 sac_variables.append(self.kernel.run_binary())
