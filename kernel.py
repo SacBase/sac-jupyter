@@ -438,7 +438,7 @@ class SacKernel(Kernel):
             os.environ["DYLD_LIBRARY_PATH"] = sac_lib_path
         sac2c_so_name = find_library ('sac2c_p')
         if not sac2c_so_name:
-            sac2c_so_name = find_library ('sac2c_p')
+            sac2c_so_name = find_library ('sac2c_d')
             if not sac2c_so_name:
                 raise RuntimeError ("Unable to load sac2c shared library!")
         self.sac2c_so = path.join (sac_lib_path, sac2c_so_name)
