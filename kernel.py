@@ -233,7 +233,7 @@ class Plot(Action):
             exec(pltscrpt,globals(),ldict)
             fig = ldict['fig']
         except Exception as e:
-            return {'failed':True, 'stdout':"", 'stderr':"[Python]" + str(e)}
+            return {'failed':True, 'stdout':"", 'stderr':"[Python] " + repr(e)}
         
         self.kernel._write_png_to_stdout(self.to_png(fig)) 
         return {'failed':False, 'stdout':"", 'stderr':""}
@@ -248,7 +248,8 @@ class Plot(Action):
     def get_sac_variables(self, variables):
         sac_variables = []
         for v in variables:
-            prg = self.kernel.mk_sacprg("\n    pyArrPrint({});\n".format (v))
+            prg = self.kernel.mk_sacprg("\n    pyPrint({});\n".format (v))
+            return {'failed':True, 'stdout':"", 'stderr':"YO???"}
             res = self.kernel.create_binary(prg)
             if (not (res['failed'])):
                 sac_variables.append(self.kernel.run_binary())
@@ -350,7 +351,8 @@ class SacFun(Sac):
         return (self.kernel.sac_check['ret'] == 3)
 
     def update_state(self, code):
-        self.old_def = self.funs[self.kernel.sac_check['symbol']]
+        if self.kernel.sac_check['symbol'] in self.funs:
+            self.old_def = self.funs[self.kernel.sac_check['symbol']]
         self.funs[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
@@ -466,7 +468,7 @@ class SacKernel(Kernel):
 
         # find global lib directory (different depending on sac2c version)
         sac_path_proc = subprocess.run ([self.sac2c_bin, "-plibsac2c"], capture_output=True, text=True)
-        sac_lib_path = "/usr/local/libexec/sac2c/1.3.3-MijasCosta-1047-g0c4a5"
+        sac_lib_path = sac_path_proc.stdout.strip(" \n")
         if "LD_LIBRARY_PATH" in os.environ:
             os.environ["LD_LIBRARY_PATH"] += sac_lib_path
         else:
@@ -480,7 +482,8 @@ class SacKernel(Kernel):
             sac2c_so_name = find_library ('sac2c_p')
             if not sac2c_so_name:
                 raise RuntimeError ("Unable to load sac2c shared library!")
-        self.sac2c_so = path.join (sac_lib_path, sac2c_so_name)
+        # self.sac2c_so = path.join (sac_lib_path, sac2c_so_name)
+        self.sac2c_so = "/usr/local/libexec/sac2c/1.3.3-MijasCosta-1085-g70801/libsac2c_p.so"
 
         # get shared object
         self.sac2c_so_handle = ctypes.CDLL (self.sac2c_so, mode=(1|ctypes.RTLD_GLOBAL))
