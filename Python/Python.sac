@@ -1,9 +1,7 @@
-module python;
+module Python;
 
 use StdIO: all;
 use Array: all;
-
-export all;
 
 /* 
  *  Module to print sac arrays in python format 
