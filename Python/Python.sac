@@ -1,5 +1,8 @@
 module Python;
 
+provide all;
+export all;
+
 use StdIO: all;
 use Array: all;
 

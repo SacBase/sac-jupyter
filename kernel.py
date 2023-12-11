@@ -220,16 +220,18 @@ class Plot(Action):
         
         try: pltscrpt, variables = self.parse_input(code)
         except: return {'failed':True, 'stdout':"", 'stderr':"[SaC kernel] Incorrect syntax for %plot"}
-        
+
         sac_variables = self.get_sac_variables(variables)
         if sac_variables == []:
             return {'failed':True, 'stdout':"", 'stderr':f"[Sac kernel] Problem with variables: {variables}. Probably not declared yet"}
         
-        raise RuntimeError(sac_variables)
+        for i in sac_variables:
+            if i['failed']:
+                return {'failed':True, 'stdout':"", 'stderr':sac_variables['stderr']}
+        
         ldict = {}
         for i, var in enumerate(sac_variables):
-            ldict[variables[i]] = eval(var)
-
+            ldict[variables[i]] = eval(var['stdout'])
         try:
             exec(pltscrpt,globals(),ldict)
             fig = ldict['fig']
@@ -252,7 +254,8 @@ class Plot(Action):
             prg = self.kernel.mk_sacprg("\n    pyPrint({});\n".format(v))
             res = self.kernel.create_binary(prg)
             if (not (res['failed'])):
-                sac_variables.append(self.kernel.run_binary(res))
+                res = self.kernel.run_binary()
+                sac_variables.append(res)
         return sac_variables
     def parse_input(self, code):
         py_variables = re.search("\((.+)\)(.*)\{", code) # Search for (...){
@@ -374,7 +377,8 @@ class SacType(Sac):
         return (self.kernel.sac_check['ret'] == 4)
 
     def update_state(self, code):
-        self.old_def = self.typedefs[self.kernel.sac_check['symbol']]
+        if self.kernel.sac_check['symbol'] in self.typedefs:
+            self.old_def = self.typedefs[self.kernel.sac_check['symbol']]
         self.typedefs[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
@@ -396,7 +400,8 @@ class SacImport(Sac):
         return (self.kernel.sac_check['ret'] == 5)
 
     def update_state(self, code):
-        self.old_def = self.imports[self.kernel.sac_check['symbol']]
+        if self.kernel.sac_check['symbol'] in self.imports:
+            self.old_def = self.imports[self.kernel.sac_check['symbol']]
         self.imports[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
@@ -419,7 +424,8 @@ class SacUse(Sac):
         return (self.kernel.sac_check['ret'] == 6)
 
     def update_state(self, code):
-        self.old_def = self.uses[self.kernel.sac_check['symbol']]
+        if self.kernel.sac_check['symbol'] in self.uses:
+            self.old_def = self.uses[self.kernel.sac_check['symbol']]
         self.uses[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
