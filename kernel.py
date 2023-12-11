@@ -225,9 +225,10 @@ class Plot(Action):
         if sac_variables == []:
             return {'failed':True, 'stdout':"", 'stderr':f"[Sac kernel] Problem with variables: {variables}. Probably not declared yet"}
         
-        ldict = {'a':[8,9,5,11]}
-        # for i in range(len(sac_variables)):
-            # ldict[variables[i]] = eval(sac_variables[i])
+        raise RuntimeError(sac_variables)
+        ldict = {}
+        for i, var in enumerate(sac_variables):
+            ldict[variables[i]] = eval(var)
 
         try:
             exec(pltscrpt,globals(),ldict)
@@ -248,11 +249,10 @@ class Plot(Action):
     def get_sac_variables(self, variables):
         sac_variables = []
         for v in variables:
-            prg = self.kernel.mk_sacprg("\n    pyPrint({});\n".format (v))
-            return {'failed':True, 'stdout':"", 'stderr':"YO???"}
+            prg = self.kernel.mk_sacprg("\n    pyPrint({});\n".format(v))
             res = self.kernel.create_binary(prg)
             if (not (res['failed'])):
-                sac_variables.append(self.kernel.run_binary())
+                sac_variables.append(self.kernel.run_binary(res))
         return sac_variables
     def parse_input(self, code):
         py_variables = re.search("\((.+)\)(.*)\{", code) # Search for (...){
