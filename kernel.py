@@ -140,6 +140,7 @@ class Action:
         pass
 
     def check_magic (self, magic, code):
+        code = code.strip ()
         if code.startswith (magic):
             return {'found': True, 'code': code[len (magic):]}
         else:
@@ -202,7 +203,7 @@ class Setflags(Action):
         return self.check_magic ('%setflags', code)
 
     def process_input(self, code):
-        self.kernel.sac2c_flags = shlex.split (code.splitlines ())
+        self.kernel.sac2c_flags = shlex.split (code)
         return {'failed':False, 'stdout':"", 'stderr':""}
 
 
@@ -485,7 +486,7 @@ class SacKernel(Kernel):
             os.environ["DYLD_LIBRARY_PATH"] = sac_lib_path
         sac2c_so_name = find_library ('sac2c_p')
         if not sac2c_so_name:
-            sac2c_so_name = find_library ('sac2c_p')
+            sac2c_so_name = find_library ('sac2c_d')
             if not sac2c_so_name:
                 raise RuntimeError ("Unable to load sac2c shared library!")
         # self.sac2c_so = path.join (sac_lib_path, sac2c_so_name)
