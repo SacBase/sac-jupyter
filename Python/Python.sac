@@ -7,7 +7,8 @@ use StdIO: all;
 use Array: all;
 
 /* 
- *  Module to print sac arrays in python format 
+ *  Module to print sac arrays in python format.  
+ *  Works for all SaC datatypes.
  */
 
 
@@ -68,7 +69,7 @@ void pyPrint (double[*] a){
     StdIO::printf ("]");
 }
 void pyPrint (double a){
-   StdIO::printf ("%d ", a);
+   StdIO::printf ("%f ", a);
 }
 
 
@@ -84,5 +85,5 @@ void pyPrint (char[*] a){
     StdIO::printf ("]");
 }
 void pyPrint (char a){
-   StdIO::printf ("%d ", a);
+   StdIO::printf ("%s ", a);
 }
