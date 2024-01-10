@@ -44,6 +44,10 @@ Running sac kernel is as simple as:
 ```bash
 jupyter notebook
 ```
+or
+```bash
+jupyter-lab
+```
 and in the web interface you set the kernel language to SaC.
 
 On the terminal you can run:
@@ -52,4 +56,18 @@ ipython console --kernel=sac
 ```
 If you do so you may want to install this lexer https://github.com/SacBase/sac-pygments
 to get syntax highlighting.
+
+## Additional installations
+The following modules need to be installed to be able to use the `%plot` command inside of Jupyter that (as the name suggests) can plot SaC variables. The kernel will still be usable without them however.
+
+- The SaC `Python` module present in this repository is needed for the plot function to work. It needs to be recognised by the SaC library. To do this ...
+
+- The [matplotlib](https://matplotlib.org/stable/) python library should be installed on your system for the plots to work. This can be done using the `pip` or third party `conda` library using
+```bash
+pip install matplotlib
+```
+or
+```bash
+conda install matplotlib
+```
 
