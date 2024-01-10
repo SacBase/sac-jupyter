@@ -17,7 +17,9 @@ import shlex
 import sys
 
 # Used for plotting
-try: from matplotlib import pyplot as plt
+try: 
+    from matplotlib import pyplot as plt
+    import numpy as np
 except: pass
 import importlib.util
 from io import BytesIO
@@ -116,8 +118,8 @@ class RealTimeSubprocess(subprocess.Popen):
 # process_input performs the action. It returns a record
 # { 'failed', 'stdout', 'stderr' }; finally,
 #
-# revert_input resets the internal state tp the one before 
-# processsing the input. It does not return anything.
+# revert_input resets the internal state to the one before 
+# processing the input. It does not return anything.
 # 
 # We try to keep as much state as possible local to the actions.
 # Everything that *needs* to be shared between actions, lives
@@ -158,8 +160,12 @@ class Help(Action):
     def process_input(self, code):
         return {'failed':False, 'stdout':"""\
 Currently the following commands are available:
-    %plot (<sac variables>){<code>} -- plot SaC variables using matplotlib python syntax.
-                                       The python code should start with <fig, ax = plt.subplots()>
+    %plot (<sac variables>){<code>} -- plot SaC variables using matplotlib python syntax at
+                                       <code>. The python code should have the matplotlib figure 
+                                       defined as fig to work. For example start with <fig, ax = plt.subplots()>.
+                                       The SaC variables are seperated using commas and can 
+                                       be used inside of <code> as python lists. Imports can be used and matplotlib
+                                       and numpy are already predefined as plt and np respectively.
     %print                          -- print the current program including
                                        imports, functions and statements in the main.
     %flags                          -- print flags that are used when running sac2c.
@@ -216,30 +222,37 @@ class Plot(Action):
         return self.check_magic ('%plot', code)
 
     def process_input(self, code):
+        #start = time.time()
         if importlib.util.find_spec('matplotlib') is None:
-            return {'failed': True, 'stdout':"", 'stderr':"[SaC kernel] Matplotlib lirary not found. Install library to enjoy fancy visualisations."}
+            return {'failed': True, 'stdout':"", 'stderr':"[SaC kernel] Matplotlib library not found. Install library to enjoy fancy visualisations."}
         
         try: pltscrpt, variables = self.parse_input(code)
         except: return {'failed':True, 'stdout':"", 'stderr':"[SaC kernel] Incorrect syntax for %plot"}
 
         sac_variables = self.get_sac_variables(variables)
         if sac_variables == []:
-            return {'failed':True, 'stdout':"", 'stderr':f"[Sac kernel] Problem with variables: {variables}. Probably not declared yet"}
+            return {'failed':True, 'stdout':"", 'stderr':f"[Sac kernel] Variables could not be compiled: {variables}."}
         
         for i in sac_variables:
             if i['failed']:
-                return {'failed':True, 'stdout':"", 'stderr':sac_variables['stderr']}
+                return {'failed':True, 'stdout':"", 'stderr':f"{i['stderr']}"}
         
         ldict = {}
         for i, var in enumerate(sac_variables):
             ldict[variables[i]] = eval(var['stdout'])
         try:
+            pltscrpt = pltscrpt + "\nfig_width, fig_height = plt.gcf().get_size_inches()"
             exec(pltscrpt,globals(),ldict)
             fig = ldict['fig']
+            fig_width = ldict['fig_width']*fig.dpi
+            fig_height = ldict['fig_height']*fig.dpi
+            plot_figure = self.to_png(fig)
         except Exception as e:
             return {'failed':True, 'stdout':"", 'stderr':"[Python] " + repr(e)}
-        
-        self.kernel._write_png_to_stdout(self.to_png(fig)) 
+
+        self.kernel._write_png_to_stdout(plot_figure, fig_width, fig_height) 
+        end = time.time()
+        #raise RuntimeError((end-start) * 10**3, "ms")
         return {'failed':False, 'stdout':"", 'stderr':""}
     
     # Return a base64-encoded PNG from a matplotlib figure.
@@ -256,6 +269,8 @@ class Plot(Action):
             res = self.kernel.create_binary(prg)
             if (not (res['failed'])):
                 res = self.kernel.run_binary()
+                sac_variables.append(res)
+            else:
                 sac_variables.append(res)
         return sac_variables
     def parse_input(self, code):
@@ -363,7 +378,7 @@ class SacFun(Sac):
         self.funs[self.kernel.sac_check['symbol']] = self.old_def
 
     def mk_sacprg (self, goal):
-        return "\n// functions\n" + "".join (self.funs.values ()) +"\n"
+        return "\n// functions\n" + "".join (map(lambda x: str(x), self.funs.values ())) +"\n"
 
 #
 # Sac - typedef
@@ -502,7 +517,7 @@ class SacKernel(Kernel):
         self.sac2c_so_handle.jupyter_free.argtypes = ctypes.c_void_p,
         self.sac2c_so_handle.jupyter_free.res_rtype = ctypes.c_void_p
 
-        # Creatae the directory where all the compilation/execution will be happening.
+        # Create the directory where all the compilation/execution will be happening.
         self.tmpdir = tempfile.mkdtemp (prefix="jup-sac")
 
     def cleanup_files(self):
@@ -544,11 +559,11 @@ class SacKernel(Kernel):
     def _write_to_stderr(self, contents):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': contents})
 
-    def _write_png_to_stdout(self, png):
+    def _write_png_to_stdout(self, png, width, height):
         if png != -1:
             content = {
                 'data': {'image/png': png},
-                'metadata' : { 'image/png' : {'width': 600,'height': 400}}
+                'metadata' : { 'image/png' : {'width': width,'height': height}}
             }
             self.send_response(self.iopub_socket,'display_data', content)
 
