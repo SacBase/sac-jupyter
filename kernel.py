@@ -222,7 +222,6 @@ class Plot(Action):
         return self.check_magic ('%plot', code)
 
     def process_input(self, code):
-        #start = time.time()
         if importlib.util.find_spec('matplotlib') is None:
             return {'failed': True, 'stdout':"", 'stderr':"[SaC kernel] Matplotlib library not found. Install library to enjoy fancy visualisations."}
         
@@ -250,9 +249,7 @@ class Plot(Action):
         except Exception as e:
             return {'failed':True, 'stdout':"", 'stderr':"[Python] " + repr(e)}
 
-        self.kernel._write_png_to_stdout(plot_figure, fig_width, fig_height) 
-        end = time.time()
-        #raise RuntimeError((end-start) * 10**3, "ms")
+        self.kernel._write_png_to_stdout(plot_figure, fig_width, fig_height)
         return {'failed':False, 'stdout':"", 'stderr':""}
     
     # Return a base64-encoded PNG from a matplotlib figure.
