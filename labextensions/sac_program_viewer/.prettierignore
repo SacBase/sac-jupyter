@@ -1,6 +1,0 @@
-node_modules
-**/node_modules
-**/lib
-**/package.json
-!/package.json
-sac_program_viewer
