@@ -58,9 +58,7 @@ If you do so you may want to install this lexer https://github.com/SacBase/sac-p
 to get syntax highlighting.
 
 ## Additional installations
-The following modules need to be installed to be able to use the `%plot` command inside of Jupyter that (as the name suggests) can plot SaC variables. The kernel will still be usable without them however.
-
-- The SaC `Python` module present in this repository is needed for the plot function to work. It needs to be recognised by the SaC library. To do this ...
+The following module and plotting library need to be installed to be able to use the `%plot` command inside of Jupyter that (as the name suggests) can plot SaC variables inside the notebook. The kernel will still be usable without these additions and is only needed for the plotting feature.
 
 - The [matplotlib](https://matplotlib.org/stable/) python library should be installed on your system for the plots to work. This can be done using the `pip` or third party `conda` library using
 ```bash
@@ -70,4 +68,6 @@ or
 ```bash
 conda install matplotlib
 ```
+
+- The SaC `Python` module present in this repository is also needed for the plot function to work. It needs to be recognised by the SaC library. To do so create a folder called `.sac2crc` in your home directory and paste the file called `sac2crc.python` (found in the Python folder in this repository) into it. The SaC compiler will look for this folder. Edit line 3 and 4 in this file, making them both hold the path to where the `Python` folder is located on your device. Now only the `use Python: all;` statement is needed in the notebook to start plotting.
 
