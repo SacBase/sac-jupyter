@@ -557,12 +557,11 @@ class SacKernel(Kernel):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': contents})
 
     def _write_png_to_stdout(self, png, width, height):
-        if png != -1:
-            content = {
-                'data': {'image/png': png},
-                'metadata' : { 'image/png' : {'width': width,'height': height}}
-            }
-            self.send_response(self.iopub_socket,'display_data', content)
+        content = {
+            'data': {'image/png': png},
+            'metadata' : { 'image/png' : {'width': width,'height': height}}
+        }
+        self.send_response(self.iopub_socket,'display_data', content)
 
     def append_stdout (self, txt):
         self.stdout += txt
