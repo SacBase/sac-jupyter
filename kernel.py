@@ -161,11 +161,19 @@ class Help(Action):
         return {'failed':False, 'stdout':"""\
 Currently the following commands are available:
     %plot (<sac variables>){<code>} -- plot SaC variables using matplotlib python syntax at
-                                       <code>. The python code should have the matplotlib figure 
-                                       defined as fig to work. For example start with <fig, ax = plt.subplots()>.
-                                       The SaC variables are seperated using commas and can 
-                                       be used inside of <code> as python lists. Imports can be used and matplotlib
-                                       and numpy are already predefined as plt and np respectively.
+                                       <code> and SaC variable seperated by commas at 
+                                       <sac variables>. These variables can be used inside 
+                                       of <code> as python lists.
+                                       - The python code should have the matplotlib figure 
+                                       defined as fig to work. For example start with 
+                                       <fig, ax = plt.subplots()>. 
+                                       - Because Python enforces indentation, the <code> 
+                                       part can not begin with indentation as normally
+                                       done in function definitions. Instead start at the 
+                                       beginning of the newline after '{'.
+                                       - Python imports can be used inside of <code> and 
+                                       matplotlib and numpy are already predefined as plt 
+                                       and np respectively.
     %print                          -- print the current program including
                                        imports, functions and statements in the main.
     %flags                          -- print flags that are used when running sac2c.
