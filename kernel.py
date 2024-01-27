@@ -266,7 +266,7 @@ class Plot(Action):
         fig.savefig(imgdata, format='png')
         imgdata.seek(0)
         return urllib.parse.quote(base64.b64encode(imgdata.getvalue()))
-    # get sac variables in python format
+    # get sac variables in python format using the SaC 'Python' module and pyPrint function 
     def get_sac_variables(self, variables):
         sac_variables = []
         for v in variables:
@@ -509,8 +509,13 @@ class SacKernel(Kernel):
             sac2c_so_name = find_library ('sac2c_d')
             if not sac2c_so_name:
                 raise RuntimeError ("Unable to load sac2c shared library!")
-        # self.sac2c_so = path.join (sac_lib_path, sac2c_so_name)
-        self.sac2c_so = "/usr/local/libexec/sac2c/1.3.3-MijasCosta-1085-g70801/libsac2c_p.so"
+            
+        # `find_library` does not return the library path on linux but only the libraries 
+        # name and thus will not be able to work properly. Can be fixed temporarely by 
+        # using the comment below and giving an absolute path to libsac2c_p.so
+        #self.sac2c_so = "/.../libexec/sac2c/1.3.3-MijasCosta-1085-g70801/libsac2c_p.so"
+        self.sac2c_so = path.join (sac_lib_path, sac2c_so_name)
+        
 
         # get shared object
         self.sac2c_so_handle = ctypes.CDLL (self.sac2c_so, mode=(1|ctypes.RTLD_GLOBAL))
