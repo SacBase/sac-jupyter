@@ -1,0 +1,7 @@
+target Python:
+
+TREE_OUTPUTDIR += ":/home/.../Python"
+LIB_OUTPUTDIR  += ":/home/.../Python"
+LIBS           += " "
+
+target package :: Python:

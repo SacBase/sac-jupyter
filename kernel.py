@@ -14,6 +14,16 @@ import os
 import os.path as path
 import json
 import shlex
+import sys
+
+# Used for plotting
+try: 
+    from matplotlib import pyplot as plt
+    import numpy as np
+except: pass
+import importlib.util
+from io import BytesIO
+import urllib, base64
 
 import ctypes
 
@@ -108,8 +118,8 @@ class RealTimeSubprocess(subprocess.Popen):
 # process_input performs the action. It returns a record
 # { 'failed', 'stdout', 'stderr' }; finally,
 #
-# revert_input resets the internal state tp the one before 
-# processsing the input. It does not return anything.
+# revert_input resets the internal state to the one before 
+# processing the input. It does not return anything.
 # 
 # We try to keep as much state as possible local to the actions.
 # Everything that *needs* to be shared between actions, lives
@@ -150,11 +160,24 @@ class Help(Action):
     def process_input(self, code):
         return {'failed':False, 'stdout':"""\
 Currently the following commands are available:
-    %print      -- print the current program including
-                   imports, functions and statements in the main.
-    %flags      -- print flags that are used when running sac2c.
-    %setflags <flags>
-                -- reset sac2c falgs to <flags>
+    %plot (<sac variables>){<code>} -- plot SaC variables using matplotlib python syntax at
+                                       <code> and SaC variable seperated by commas at 
+                                       <sac variables>. These variables can be used inside 
+                                       of <code> as python lists.
+                                       - The python code should have the matplotlib figure 
+                                       defined as fig to work. For example start with 
+                                       <fig, ax = plt.subplots()>. 
+                                       - Because Python enforces indentation, the <code> 
+                                       part can not begin with indentation as normally
+                                       done in function definitions. Instead start at the 
+                                       beginning of the newline after '{'.
+                                       - Python imports can be used inside of <code> and 
+                                       matplotlib and numpy are already predefined as plt 
+                                       and np respectively.
+    %print                          -- print the current program including
+                                       imports, functions and statements in the main.
+    %flags                          -- print flags that are used when running sac2c.
+    %setflags <flags>               -- reset sac2c falgs to <flags>.
 """, 'stderr':""}
 
 
@@ -186,7 +209,6 @@ class Flags(Action):
 
 
 
-
 #
 # %setflags  
 #
@@ -198,6 +220,69 @@ class Setflags(Action):
         self.kernel.sac2c_flags = shlex.split (code)
         return {'failed':False, 'stdout':"", 'stderr':""}
 
+
+
+#
+# %plot
+#
+class Plot(Action):
+    def check_input(self, code):
+        return self.check_magic ('%plot', code)
+
+    def process_input(self, code):
+        if importlib.util.find_spec('matplotlib') is None:
+            return {'failed': True, 'stdout':"", 'stderr':"[SaC kernel] Matplotlib library not found. Install library to enjoy fancy visualisations."}
+        
+        try: pltscrpt, variables = self.parse_input(code)
+        except: return {'failed':True, 'stdout':"", 'stderr':"[SaC kernel] Incorrect syntax for %plot"}
+
+        sac_variables = self.get_sac_variables(variables)
+        if sac_variables == []:
+            return {'failed':True, 'stdout':"", 'stderr':f"[Sac kernel] Variables could not be compiled: {variables}."}
+        
+        for i in sac_variables:
+            if i['failed']:
+                return {'failed':True, 'stdout':"", 'stderr':f"{i['stderr']}"}
+        
+        ldict = {}
+        for i, var in enumerate(sac_variables):
+            ldict[variables[i]] = eval(var['stdout'])
+        try:
+            pltscrpt = pltscrpt + "\nfig_width, fig_height = plt.gcf().get_size_inches()"
+            exec(pltscrpt,globals(),ldict)
+            fig = ldict['fig']
+            fig_width = ldict['fig_width']*fig.dpi
+            fig_height = ldict['fig_height']*fig.dpi
+            plot_figure = self.to_png(fig)
+        except Exception as e:
+            return {'failed':True, 'stdout':"", 'stderr':"[Python] " + repr(e)}
+
+        self.kernel._write_png_to_stdout(plot_figure, fig_width, fig_height)
+        return {'failed':False, 'stdout':"", 'stderr':""}
+    
+    # Return a base64-encoded PNG from a matplotlib figure.
+    def to_png(self, fig):
+        imgdata = BytesIO()
+        fig.savefig(imgdata, format='png')
+        imgdata.seek(0)
+        return urllib.parse.quote(base64.b64encode(imgdata.getvalue()))
+    # get sac variables in python format using the SaC 'Python' module and pyPrint function 
+    def get_sac_variables(self, variables):
+        sac_variables = []
+        for v in variables:
+            prg = self.kernel.mk_sacprg("\n    pyPrint({});\n".format(v))
+            res = self.kernel.create_binary(prg)
+            if (not (res['failed'])):
+                res = self.kernel.run_binary()
+                sac_variables.append(res)
+            else:
+                sac_variables.append(res)
+        return sac_variables
+    def parse_input(self, code):
+        py_variables = re.search("\((.+)\)(.*)\{", code) # Search for (...){
+        plot_script = (code.split(py_variables.group())[1])[:-1] # Remove '}' and the variables
+        variables = py_variables.group(1).replace(" ", "").split(",") # Convert to list
+        return plot_script, variables
 
 
 
@@ -234,24 +319,6 @@ class Sac(Action):
     def revert_input (self, code):
         self.revert_state (code)
 
-    # generic helper functions for dictionaries:
-
-    def push_symb_dict (self, mydict, code):
-        key = self.kernel.sac_check['symbol']
-        if (key in mydict):
-            res = mydict[key]
-        else:
-            res = None
-        mydict[key] = code
-        return res
-
-    def pop_symb_dict (self, mydict, code):
-        key = self.kernel.sac_check['symbol']
-        if (code == None):
-            del mydict[key]
-        else:
-            mydict[key] = code
-        
 #
 # Sac - expression
 #
@@ -275,8 +342,6 @@ class SacExpr(Sac):
         else:
             return "\n    StdIO::print ({});\n".format (self.expr)
         
-    
-
 #
 # Sac - statement
 #
@@ -297,7 +362,6 @@ class SacStmt(Sac):
     def mk_sacprg (self, goal):
         return "\nint main () {\n" + "".join (self.stmts)
 
-
 #
 # Sac - function
 #
@@ -311,14 +375,15 @@ class SacFun(Sac):
         return (self.kernel.sac_check['ret'] == 3)
 
     def update_state(self, code):
-        self.old_def = self.push_symb_dict (self.funs, code)
+        if self.kernel.sac_check['symbol'] in self.funs:
+            self.old_def = self.funs[self.kernel.sac_check['symbol']]
+        self.funs[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
-        self.pop_symb_dict (self.funs, self.old_def)
+        self.funs[self.kernel.sac_check['symbol']] = self.old_def
 
     def mk_sacprg (self, goal):
-        return "\n// functions\n" + "\n".join (self.funs.values ()) +"\n"
-
+        return "\n// functions\n" + "".join (map(lambda x: str(x), self.funs.values ())) +"\n"
 
 #
 # Sac - typedef
@@ -333,15 +398,15 @@ class SacType(Sac):
         return (self.kernel.sac_check['ret'] == 4)
 
     def update_state(self, code):
-        self.old_def = self.push_symb_dict (self.typedefs, code)
+        if self.kernel.sac_check['symbol'] in self.typedefs:
+            self.old_def = self.typedefs[self.kernel.sac_check['symbol']]
+        self.typedefs[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
-        self.pop_symb_dict (self.typedefs, self.old_def)
+        self.typedefs[self.kernel.sac_check['symbol']] = self.old_def
 
     def mk_sacprg (self, goal):
-        return "\n// typedefs\n" + "\n".join (self.typedefs.values ()) +"\n"
-
-
+        return "\n// typedefs\n" + "".join (self.typedefs.values ()) +"\n"
 
 #
 # Sac - import
@@ -356,15 +421,15 @@ class SacImport(Sac):
         return (self.kernel.sac_check['ret'] == 5)
 
     def update_state(self, code):
-        self.old_def = self.push_symb_dict (self.imports, code)
+        if self.kernel.sac_check['symbol'] in self.imports:
+            self.old_def = self.imports[self.kernel.sac_check['symbol']]
+        self.imports[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
-        self.pop_symb_dict (self.imports, self.old_def)
+        self.imports[self.kernel.sac_check['symbol']] = self.old_def
 
     def mk_sacprg (self, goal):
-        return "\n// imports\n" + "\n".join (self.imports.values ()) +"\n"
-
-
+        return "\n// imports\n" + "".join (self.imports.values ()) +"\n"
 
 #
 # Sac - use
@@ -380,16 +445,19 @@ class SacUse(Sac):
         return (self.kernel.sac_check['ret'] == 6)
 
     def update_state(self, code):
-        self.old_def = self.push_symb_dict (self.uses, code)
+        if self.kernel.sac_check['symbol'] in self.uses:
+            self.old_def = self.uses[self.kernel.sac_check['symbol']]
+        self.uses[self.kernel.sac_check['symbol']] = code
 
     def revert_state (self, code):
-        self.pop_symb_dict (self.uses, self.old_def)
+        self.uses[self.kernel.sac_check['symbol']] = self.old_def
 
     def mk_sacprg (self, goal):
-        return "\n// uses\n" + "\n".join (self.uses.values ()) +"\n"
+        return "\n// uses\n" + "".join (self.uses.values ()) +"\n"
 
 
         
+
 
 
 #
@@ -408,7 +476,7 @@ class SacKernel(Kernel):
              "Uses sac2c, to incrementaly compile the notebook.\n"
     def __init__(self, *args, **kwargs):
         super(SacKernel, self).__init__(*args, **kwargs)
-        self.actions = [Help (self), Print (self), Flags (self), Setflags (self),
+        self.actions = [Help (self), Print (self), Flags (self), Setflags (self), Plot(self),
                         SacUse (self), SacImport (self), SacType (self),
                         SacFun (self), SacStmt (self), SacExpr (self)]
         self.files = []
@@ -441,7 +509,13 @@ class SacKernel(Kernel):
             sac2c_so_name = find_library ('sac2c_d')
             if not sac2c_so_name:
                 raise RuntimeError ("Unable to load sac2c shared library!")
+            
+        # `find_library` does not return the library path on linux but only the libraries 
+        # name and thus will not be able to work properly. Can be fixed temporarely by 
+        # using the comment below and giving an absolute path to libsac2c_p.so
+        #self.sac2c_so = "/.../libexec/sac2c/1.3.3-MijasCosta-1085-g70801/libsac2c_p.so"
         self.sac2c_so = path.join (sac_lib_path, sac2c_so_name)
+        
 
         # get shared object
         self.sac2c_so_handle = ctypes.CDLL (self.sac2c_so, mode=(1|ctypes.RTLD_GLOBAL))
@@ -453,7 +527,7 @@ class SacKernel(Kernel):
         self.sac2c_so_handle.jupyter_free.argtypes = ctypes.c_void_p,
         self.sac2c_so_handle.jupyter_free.res_rtype = ctypes.c_void_p
 
-        # Creatae the directory where all the compilation/execution will be happening.
+        # Create the directory where all the compilation/execution will be happening.
         self.tmpdir = tempfile.mkdtemp (prefix="jup-sac")
 
     def cleanup_files(self):
@@ -494,6 +568,13 @@ class SacKernel(Kernel):
 
     def _write_to_stderr(self, contents):
         self.send_response(self.iopub_socket, 'stream', {'name': 'stderr', 'text': contents})
+
+    def _write_png_to_stdout(self, png, width, height):
+        content = {
+            'data': {'image/png': png},
+            'metadata' : { 'image/png' : {'width': width,'height': height}}
+        }
+        self.send_response(self.iopub_socket,'display_data', content)
 
     def append_stdout (self, txt):
         self.stdout += txt
@@ -587,7 +668,6 @@ class SacKernel(Kernel):
     def do_shutdown(self, restart):
         """Cleanup the created source code files and executables when shutting down the kernel"""
         self.cleanup_files()
-
 
 if __name__ == "__main__":
     from ipykernel.kernelapp import IPKernelApp

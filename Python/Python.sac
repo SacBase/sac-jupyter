@@ -1,0 +1,89 @@
+module Python;
+
+provide all;
+export all;
+
+use StdIO: all;
+use Array: all;
+
+/* 
+ *  Module to print sac arrays in python format.  
+ *  Works for all SaC datatypes.
+ */
+
+
+void pyPrint(byte[*] a) { pyPrint(toll(a)); }
+void pyPrint(short[*] a) { pyPrint(toll(a)); }
+void pyPrint(int[*] a) { pyPrint(toll(a)); }
+void pyPrint(long[*] a) { pyPrint(toll(a)); }
+
+void pyPrint(ubyte[*] a) { pyPrint(toull(a)); }
+void pyPrint(ushort[*] a) { pyPrint(toull(a)); }
+void pyPrint(uint[*] a) { pyPrint(toull(a)); }
+void pyPrint(ulong[*] a) { pyPrint(toull(a)); }
+
+void pyPrint(float[*] a) { pyPrint(tod(a)); }
+
+
+void pyPrint (longlong[*] a){
+    StdIO::printf ("[");
+
+    for(i=0; i< shape(a)[0]; i++) {
+       pyPrint (a[i]);
+       if (i<shape(a)[0]-1)
+          StdIO::printf(", ");
+
+    }
+    StdIO::printf ("]");
+}
+void pyPrint (longlong a){
+   StdIO::printf ("%d ", a);
+}
+
+
+void pyPrint (ulonglong[*] a){
+    StdIO::printf ("[");
+
+    for(i=0; i< shape(a)[0]; i++) {
+       pyPrint (a[i]);
+       if (i<shape(a)[0]-1)
+          StdIO::printf(", ");
+
+    }
+    StdIO::printf ("]");
+}
+void pyPrint (ulonglong a){
+   StdIO::printf ("%d ", a);
+}
+
+
+void pyPrint (double[*] a){
+    StdIO::printf ("[");
+
+    for( i=0; i< shape(a)[0]; i++) {
+       pyPrint (a[i]);
+       if (i<shape(a)[0]-1)
+          StdIO::printf(", ");
+
+    }
+    StdIO::printf ("]");
+}
+void pyPrint (double a){
+   StdIO::printf ("%f ", a);
+}
+
+
+void pyPrint (char[*] a){
+    StdIO::printf ("[");
+
+    for(i=0; i< shape(a)[0]; i++) {
+       pyPrint (a[i]);
+       if (i<shape(a)[0]-1)
+          StdIO::printf(", ");
+
+    }
+    StdIO::printf ("]");
+}
+void pyPrint (char a){
+   StdIO::printf ("%s ", a);
+}
