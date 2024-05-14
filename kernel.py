@@ -417,7 +417,7 @@ class SacKernel(Kernel):
         self.binary = None
         self.sac_check = None
         # Make sure to do checks on array bounds as well
-        self.sac2c_flags =  ['-v0', '-O0', '-noprelude', '-noinl', '-specmode', 'akd', '-check', 'tc']
+        self.sac2c_flags =  ['-v0', '-O0', '-noprelude', '-noinl', '-maxspec', '0', '-check', 'tc']
 
         # get sac2c_p binary
         os.environ["PATH"] += "/usr/local/bin"
