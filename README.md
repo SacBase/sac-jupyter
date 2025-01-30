@@ -1,40 +1,47 @@
 # Jupyter kernel for SaC
 
-This repository contains jupyter-related tools for SaC.
+This repository contains Jupyter-related tools for SaC.
 
-## Installation
+## Prerequisites
 
-1. Clone this repository:
+- [sac2c and the standard library](https://sac-home.org/download:main)
+- [Jupyter notebook](https://jupyter.org/install)
+
+## Automatic installation
 
 ```bash
-git clone git@github.com:SacBase/sac-jupyter.git
+make install
 ```
 
-2. Install [Jupyter notebook](https://jupyter.org/install).
-3. Get the Jupyter data directory path using `jupyter --data-dir`.
-4. Within this director, create a new directory `kernels`.
+## Manual installation
+
+1. Get the Jupyter data directory path using `jupyter --data-dir`.
+2. Within this director, create a new directory `kernels`.
 
 ```bash
 mkdir -p <jupyter-path>/kernels
 ```
 
-5. Copy the `sac` directory to the newly created `kernels` directory.
+3. Copy the `sac` directory to the newly created `kernels` directory.
 
 ```bash
 cp -r sac <jupyter-path>/kernels
 ```
 
-6. Adjust the path in `<jupyter-path>/kernels/sac/kernel.json` to
+4. Adjust the path in `<jupyter-path>/kernels/sac/kernel.json` to
    point to the location of the `kernel.py` file in this repository.
 
 ```bash
-echo "$PWD"
+echo $PWD
 $ <repository-path>
 ```
 
-7. Start the Jupyter notebook.
-   In the web interface you set the kernel language to SaC.
+## Running Jupyter
+
+To start the Jupyter notebook, run:
 
 ```bash
 jupyter notebook
 ```
+
+In the web interface you set the kernel language to SaC.
