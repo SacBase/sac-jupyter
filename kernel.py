@@ -102,15 +102,15 @@ class RealTimeSubprocess(subprocess.Popen):
 #
 # check_input finds out whether the given action is applicable
 # and it returns a record {'found', 'code'}, indicating
-# if the action has been found, and providing the input for 
+# if the action has been found, and providing the input for
 # processing the action.
 #
 # process_input performs the action. It returns a record
 # { 'failed', 'stdout', 'stderr' }; finally,
 #
-# revert_input resets the internal state tp the one before 
+# revert_input resets the internal state tp the one before
 # processsing the input. It does not return anything.
-# 
+#
 # We try to keep as much state as possible local to the actions.
 # Everything that *needs* to be shared between actions, lives
 # in the SaCKernel class, a pointer to which is stored in all
@@ -188,7 +188,7 @@ class Flags(Action):
 
 
 #
-# %setflags  
+# %setflags
 #
 class Setflags(Action):
     def check_input(self, code):
@@ -251,7 +251,7 @@ class Sac(Action):
             del mydict[key]
         else:
             mydict[key] = code
-        
+
 #
 # Sac - expression
 #
@@ -274,8 +274,8 @@ class SacExpr(Sac):
             return goal
         else:
             return "\n    StdIO::print ({});\n".format (self.expr)
-        
-    
+
+
 
 #
 # Sac - statement
@@ -389,7 +389,7 @@ class SacUse(Sac):
         return "\n// uses\n" + "\n".join (self.uses.values ()) +"\n"
 
 
-        
+
 
 
 #
@@ -426,22 +426,33 @@ class SacKernel(Kernel):
             raise RuntimeError ("Unable to find sac2c binary!")
 
         # find global lib directory (different depending on sac2c version)
-        sac_path_proc = subprocess.run ([self.sac2c_bin, "-plibsac2c"], capture_output=True, text=True)
-        sac_lib_path = sac_path_proc.stdout.strip(" \n")
+        sac_path_proc = subprocess.run([self.sac2c_bin, "-plibsac2c"], capture_output=True, text=True)
+        sac_lib_paths = sac_path_proc.stdout.strip(" \n")
         if "LD_LIBRARY_PATH" in os.environ:
-            os.environ["LD_LIBRARY_PATH"] += sac_lib_path
+            os.environ["LD_LIBRARY_PATH"] += sac_lib_paths
         else:
-            os.environ["LD_LIBRARY_PATH"] = sac_lib_path
+            os.environ["LD_LIBRARY_PATH"] = sac_lib_paths
         if "DYLD_LIBRARY_PATH" in os.environ:
-            os.environ["DYLD_LIBRARY_PATH"] += sac_lib_path
+            os.environ["DYLD_LIBRARY_PATH"] += sac_lib_paths
         else:
-            os.environ["DYLD_LIBRARY_PATH"] = sac_lib_path
-        sac2c_so_name = find_library ('sac2c_p')
+            os.environ["DYLD_LIBRARY_PATH"] = sac_lib_paths
+
+        sac2c_so_name = find_library('sac2c_p')
         if not sac2c_so_name:
-            sac2c_so_name = find_library ('sac2c_d')
+            sac2c_so_name = find_library('sac2c_d')
             if not sac2c_so_name:
                 raise RuntimeError ("Unable to load sac2c shared library!")
-        self.sac2c_so = path.join (sac_lib_path, sac2c_so_name)
+
+        self.sac2c_so = None
+
+        for sac_lib_path in sac_lib_paths.split(':'):
+            sac2c_so = path.join(sac_lib_path, sac2c_so_name)
+            if path.exists(sac2c_so):
+                self.sac2c_so = sac2c_so
+                break
+
+        if self.sac2c_so is None:
+            raise RuntimeError ("Unable to load sac2c shared library!")
 
         # get shared object
         self.sac2c_so_handle = ctypes.CDLL (self.sac2c_so, mode=(1|ctypes.RTLD_GLOBAL))
@@ -534,7 +545,7 @@ class SacKernel(Kernel):
                 p.write_contents()
                 if (p.returncode != 0):  # Compilation failed
                     return {'failed': True, 'stdout': self.stdout,
-                            'stderr': self.stderr + 
+                            'stderr': self.stderr +
                                       "[SaC kernel] sac2c exited with code {}, the executable will not be executed".format(
                                         p.returncode)}
                 else:
