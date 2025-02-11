@@ -373,7 +373,6 @@ class SacUse(Sac):
     def __init__(self, kernel):
         super().__init__ (kernel)
         self.uses = dict ()
-        self.uses["Array"] = "use Array: all;"
         self.old_def = None
 
     def check_sac_action (self, code):
@@ -466,6 +465,10 @@ class SacKernel(Kernel):
 
         # Creatae the directory where all the compilation/execution will be happening.
         self.tmpdir = tempfile.mkdtemp (prefix="jup-sac")
+
+        # Array is included by default. We execute the `use` declaration here
+        # to ensure that the SaC module cache has been initialized.
+        self.do_execute("use Array: all;", False)
 
     def cleanup_files(self):
         """Remove all the temporary files created by the kernel"""
