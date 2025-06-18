@@ -1,19 +1,19 @@
-# Jupyter kernel for SaC
+[![docker pulls](https://img.shields.io/docker/pulls/sacbase/sac-jupyter-notebook)](https://hub.docker.com/r/sacbase/sac-jupyter-notebook)
+
+# SaC Jupyter kernel
 
 This repository contains Jupyter-related tools for SaC.
 
+We recommend using the pre-built [Docker image](https://hub.docker.com/r/sacbase/sac-jupyter-notebook).
+
+# Manual installation
+
 ## Prerequisites
 
-- [sac2c and the standard library](https://sac-home.org/download:main)
-- [Jupyter notebook](https://jupyter.org/install)
+- [sac2c and the standard library](https://sac-home.org/download:main).
+- [Jupyter notebook](https://jupyter.org/install).
 
-## Automatic installation
-
-```bash
-make install
-```
-
-## Manual installation
+## Installation
 
 1. Get the Jupyter data directory path using `jupyter --data-dir`.
 2. Within this director, create a new directory `kernels`.
